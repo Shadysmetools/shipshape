@@ -13,12 +13,12 @@ It also ships a **timesheet agent**, which measures real working hours from Clau
   <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-tutorial.mp4">
     <img src="docs/media/readme/tutorial-thumbnail.png" width="720" alt="Click to watch the ShipShape tutorial (10 min)">
   </a><br>
-  <b>▶ Click the picture to watch the full tutorial (10 min, MP4)</b> · <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-teaser.mp4">60-second teaser</a> · <a href="https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0">all videos</a>
+  <b>▶ Click the picture to watch the full tutorial (8½ min, MP4)</b> · <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-teaser.mp4">60-second teaser</a> · <a href="https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0">all videos</a>
 </p>
 
 <p align="center"><img src="docs/media/readme/shipshape-preview.gif" width="720" alt="ShipShape teaser preview"></p>
 
-What the tutorial covers, in order: what ShipShape is (0:00) · the rules it never breaks (1:10) · install in 5 steps (2:00) · `bin/doctor` health check (3:30) · your first `/qa-goal` with a narrated video result (4:30) · reading the HTML report and old runs (6:30) · delivery to Telegram/WhatsApp (8:00) · timesheet and Odoo agents (9:00).
+What the tutorial covers (8½ minutes), in order: what ShipShape is (0:13) · the rules it never breaks (0:37) · install in 5 steps (0:54) · `bin/doctor` health check (1:17) · your first `/qa-goal` (1:41) · agents and rounds (2:33) · narrated video evidence (3:10) · load test (3:33) · live regression (3:53) · the refuter (4:34) · the HTML report and old runs (5:12) · delivery to Telegram/WhatsApp (5:48) · plain-language hooks (6:13) · desktop control (6:51) · timesheet agent (7:24) · Odoo expert (7:51) · getting help (8:15).
 Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE.md](docs/GUIDE.md) · re-render the video yourself: `bin/make-video.sh tutorial`.
 
 ---
