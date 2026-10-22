@@ -75,7 +75,7 @@ Two layers do the work:
 Requirements: [Claude Code](https://code.claude.com), Python 3.10+, Node.js 20+, ffmpeg. The installer handles everything else.
 
 ```bash
-git clone https://github.com/<owner>/shipshape.git && cd shipshape
+git clone https://github.com/Shadysmetools/shipshape.git && cd shipshape
 bash bin/install.sh                 # macOS / Linux / Git Bash
 # Windows PowerShell: powershell -ExecutionPolicy Bypass -File bin\install.ps1
 bash bin/doctor.sh                  # verify: python, node, ffmpeg, Playwright browsers, MCP servers, voice
@@ -83,7 +83,7 @@ bash bin/doctor.sh                  # verify: python, node, ffmpeg, Playwright b
 
 Then, inside Claude Code:
 ```
-/plugin marketplace add <owner>/shipshape
+/plugin marketplace add Shadysmetools/shipshape
 /plugin install smetools-agent-kit@shipshape
 ```
 You can also add the marketplace from a local folder: `/plugin marketplace add /path/to/shipshape`.

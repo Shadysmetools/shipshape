@@ -6,12 +6,12 @@ Works on Windows 10/11 and macOS (Linux too). Fake data only, nothing leaves you
 **macOS**
 ```bash
 brew install python node ffmpeg          # skip what you already have
-git clone https://github.com/<owner>/shipshape.git && cd shipshape
+git clone https://github.com/Shadysmetools/shipshape.git && cd shipshape
 bash bin/install.sh
 ```
 **Windows (PowerShell)**
 ```powershell
-git clone https://github.com/<owner>/shipshape.git; cd shipshape
+git clone https://github.com/Shadysmetools/shipshape.git; cd shipshape
 powershell -ExecutionPolicy Bypass -File bin\install.ps1     # installs Node/ffmpeg with winget if missing (per user)
 ```
 The installer covers the Python packages, the Playwright browsers (Chromium, Firefox, WebKit), the pinned Playwright MCP and Chrome DevTools MCP, and the Playwright CLI. Optional flags: `--with-desktop` / `-WithDesktop` (pyautogui, pywinauto), `--with-k6` / `-WithK6`, `--with-security` / `-WithSecurity` (gitleaks, pip-audit).
@@ -24,7 +24,7 @@ Every line should say OK, except the optional ones. Each FAIL line prints its fi
 
 ## 3. Add it to Claude Code (1 min)
 ```
-/plugin marketplace add <owner>/shipshape          # or a local path to this folder
+/plugin marketplace add Shadysmetools/shipshape          # or a local path to this folder
 /plugin install smetools-agent-kit@shipshape
 ```
 Restart Claude Code. You should see `ShipShape ready: /qa-goal /qa-run ...` at session start.
