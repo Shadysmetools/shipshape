@@ -7,9 +7,22 @@ Tell it `/qa-goal "a new user can sign up and reach checkout"`. A team of agents
 
 It also ships a **timesheet agent**, which measures real working hours from Claude Code logs, and an **Odoo expert** with safe staging and deploy rules.
 
-> 🎬 **Watch first:** [ShipShape: From Zero to Self-Testing in 10 Minutes](https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-tutorial.mp4) · [60-second teaser](https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-teaser.mp4) · [Release page](https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0). Sources are in `docs/media/tutorial/`; `bin/make-video.sh tutorial` re-renders them.
+## 🎬 Tutorial: *ShipShape — From Zero to Self-Testing in 10 Minutes*
+
+<p align="center">
+  <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-tutorial.mp4">
+    <img src="docs/media/readme/tutorial-thumbnail.png" width="720" alt="Click to watch the ShipShape tutorial (10 min)">
+  </a><br>
+  <b>▶ Click the picture to watch the full tutorial (10 min, MP4)</b> · <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-teaser.mp4">60-second teaser</a> · <a href="https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0">all videos</a>
+</p>
+
+<p align="center"><img src="docs/media/readme/shipshape-preview.gif" width="720" alt="ShipShape teaser preview"></p>
+
+What the tutorial covers, in order: what ShipShape is (0:00) · the rules it never breaks (1:10) · install in 5 steps (2:00) · `bin/doctor` health check (3:30) · your first `/qa-goal` with a narrated video result (4:30) · reading the HTML report and old runs (6:30) · delivery to Telegram/WhatsApp (8:00) · timesheet and Odoo agents (9:00).
+Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE.md](docs/GUIDE.md) · re-render the video yourself: `bin/make-video.sh tutorial`.
 
 ---
+
 
 ## What you get
 
