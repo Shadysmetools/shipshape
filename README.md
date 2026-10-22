@@ -7,7 +7,7 @@ Tell it `/qa-goal "a new user can sign up and reach checkout"`. A team of agents
 
 It also ships a **timesheet agent**, which measures real working hours from Claude Code logs, and an **Odoo expert** with safe staging and deploy rules.
 
-> Tutorial video: **"ShipShape: From Zero to Self-Testing in 10 Minutes"** and a 60-second teaser. They will be attached to the first GitHub Release (pending). The sources are in `docs/media/tutorial/`, and `bin/make-video.sh tutorial` re-renders them.
+> 🎬 **Watch first:** [ShipShape: From Zero to Self-Testing in 10 Minutes](https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-tutorial.mp4) · [60-second teaser](https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-teaser.mp4) · [Release page](https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0). Sources are in `docs/media/tutorial/`; `bin/make-video.sh tutorial` re-renders them.
 
 ---
 
