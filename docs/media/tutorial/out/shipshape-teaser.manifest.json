@@ -1,0 +1,64 @@
+{
+ "file": "E:\\knowcap-dev\\smetools-agent-kit\\docs\\media\\tutorial\\out\\shipshape-teaser.mp4",
+ "seconds": 58.81,
+ "mb": 2.7,
+ "chapters": [],
+ "scenes": [
+  {
+   "id": "t-title",
+   "kind": "title",
+   "start": 0.0,
+   "dur": 6.13,
+   "mock": false,
+   "tag": ""
+  },
+  {
+   "id": "t-rounds",
+   "kind": "video",
+   "start": 6.13,
+   "dur": 8.98,
+   "mock": false,
+   "tag": "LIVE RECORDING"
+  },
+  {
+   "id": "t-refute",
+   "kind": "terminal",
+   "start": 15.11,
+   "dur": 11.28,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "t-report",
+   "kind": "scroll",
+   "start": 26.39,
+   "dur": 9.58,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "t-hook",
+   "kind": "terminal",
+   "start": 35.97,
+   "dur": 5.81,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "t-more",
+   "kind": "card",
+   "start": 41.78,
+   "dur": 8.8,
+   "mock": false,
+   "tag": "ILLUSTRATION"
+  },
+  {
+   "id": "t-end",
+   "kind": "title",
+   "start": 50.58,
+   "dur": 8.21,
+   "mock": false,
+   "tag": ""
+  }
+ ]
+}

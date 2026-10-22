@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--caps=devtools",
+        "--isolated",
+        "--viewport-size=1280x720",
+        "--output-dir=${SMEKIT_EVIDENCE_DIR:-qa-evidence}/mcp",
+        "--save-session"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@1.10.1",
+        "--isolated",
+        "--usageStatistics=false"
+      ]
+    }
+  }
+}

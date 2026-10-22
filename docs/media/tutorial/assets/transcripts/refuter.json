@@ -1,0 +1,6 @@
+[
+ {
+  "cmd": "claude -p \"Use the qa-refuter agent on claim B1 (TC-04: 'Welcome back, Test User' missing)\"",
+  "out": "**Run counts (welcome-back, round 01):**\n- Pass 1: 1 pass / 1 fail (TC-01 passed, TC-04 failed).\n- Pass 2: 1 pass / 1 fail (same result).\n- Overall: TC-01 passed in both passes and TC-04 failed in both. That's 0 flaky and 0 blocked.\n\n**Evidence:**\n- `qa-runs/2026-10-22-returning-user-sees-welcome-back/round-01/welcome-back/pass-1/results.json`\n- `qa-runs/2026-10-22-returning-user-sees-welcome-back/round-01/welcome-back/pass-2/results.json`\n- Screenshot: `round-01/welcome-back/pass-1/02-TC-04-fail.png`\n- Ledger: `qa-runs/2026-10-22-returning-user-sees-welcome-back/ledger.json`\n\n**Refuter verdict on B1:** refuted. The test expects \"Welcome back, Test User\", but neither the app nor the original plan (`examples/demo-app/plans/signup.json`) ever specifies that text. The app correctly shows \"Welcome, Test User\".\n\n**Not checked:**\n- The refuter couldn't diff the whole live page against the source because that needed approval. It compared only the greeting lines.\n- I didn't watch the run videos myself.\n- I haven't written the suggested ledger update for B1."
+ }
+]

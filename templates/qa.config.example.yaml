@@ -1,0 +1,46 @@
+# qa.config.yaml: per-project QA settings. Copy to your project root as qa.config.yaml.
+# Secrets are NEVER written here: each channel names the ENV VAR that holds its secret.
+project: demo-shop
+base_url: http://127.0.0.1:8765/          # local or staging only
+allow_hosts: [127.0.0.1, localhost]       # the recorder, load test and header check refuse anything else
+live: false                               # true = a client's live site: the run stops before any input
+narrator:
+  provider: edge                          # edge (free) | openai (OPENAI_API_KEY) | elevenlabs (ELEVENLABS_API_KEY)
+  lang: en                                # en | ar
+  voice: en-US-AndrewNeural               # ar: ar-EG-ShakirNeural or ar-EG-SalmaNeural
+  rate: "-5%"
+loop:
+  max_rounds: 3
+  budget_minutes: 120
+  passes: 2                               # every scenario twice; disagreement = FLAKY
+# Optional public links (e.g. a private bucket or intranet path) used when a file is too big to attach
+report_link_base: ""
+video_link_base: ""
+notify:
+  telegram:
+    enabled: false
+    token: {env: TELEGRAM_BOT_TOKEN}
+    chat_id: "<TELEGRAM_CHAT_ID>"           # placeholder
+    topic_id: null                         # forum topic, optional
+    lang: en
+  whatsapp:
+    enabled: false
+    provider: meta                         # meta | twilio
+    token: {env: WHATSAPP_TOKEN}
+    phone_number_id: "<WHATSAPP_PHONE_NUMBER_ID>"
+    to: ["+00 000 000 0000"]               # test recipients only
+    template: {name: qa_run_summary, language: en}
+    # twilio: account_sid: {env: TWILIO_ACCOUNT_SID}, auth_token: {env: TWILIO_AUTH_TOKEN}, from: "whatsapp:<TWILIO_NUMBER>"
+  slack:
+    enabled: false
+    webhook_url: {env: SLACK_WEBHOOK_URL}
+  email:
+    enabled: false
+    host: smtp.example.com
+    port: 587
+    from: qa-bot@example.com
+    to: [team@example.com]
+    password: {env: SMTP_PASSWORD}
+  webhook:
+    enabled: false
+    url: {env: QA_WEBHOOK_URL}

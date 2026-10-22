@@ -1,0 +1,14 @@
+{
+  "_comment": "Timesheet task map. Regex rules are matched against typed requests and commit subjects; first matching task wins per item. Fill ids from Odoo (project.project / project.task). No real names here: the employee is whoever imports.",
+  "project": {"id": 100, "name": "Example project"},
+  "employee": {"id": 7, "name": "Test Developer"},
+  "company_id": null,
+  "tasks": [
+    {"id": 1001, "name": "Login page", "description": "Login page build and fixes", "match": ["login|sign.?in|auth"]},
+    {"id": 1002, "name": "Checkout", "description": "Checkout flow", "match": ["checkout|cart|payment form"]},
+    {"id": 1003, "name": "QA and tests", "description": "Test writing, QA rounds and evidence", "match": ["^test|qa|regression|e2e|playwright"]}
+  ],
+  "exclude": ["timesheet|hours report|log my hours"],
+  "manual": {"2026-01-05 09:00": 1001, "2026-01-05 16:30": null},
+  "default_task": null
+}

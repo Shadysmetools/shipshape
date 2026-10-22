@@ -1,0 +1,237 @@
+{
+ "file": "E:\\knowcap-dev\\smetools-agent-kit\\docs\\media\\tutorial\\out\\shipshape-tutorial.mp4",
+ "seconds": 515.471,
+ "mb": 16.2,
+ "chapters": [
+  [
+   0.0,
+   "What ShipShape is"
+  ],
+  [
+   54.2,
+   "Install"
+  ],
+  [
+   77.56,
+   "Doctor"
+  ],
+  [
+   101.41,
+   "/qa-goal on the example app"
+  ],
+  [
+   312.93,
+   "The local HTML report"
+  ],
+  [
+   348.56,
+   "Auto-delivery dry run"
+  ],
+  [
+   374.46,
+   "A plain-language hook blocks an unsafe action"
+  ],
+  [
+   412.41,
+   "Desktop control (gated)"
+  ],
+  [
+   445.34,
+   "/timesheet"
+  ],
+  [
+   472.14,
+   "/odoo-check"
+  ],
+  [
+   495.65,
+   "Where to get help"
+  ]
+ ],
+ "scenes": [
+  {
+   "id": "title",
+   "kind": "title",
+   "start": 0.0,
+   "dur": 13.15,
+   "mock": false,
+   "tag": ""
+  },
+  {
+   "id": "what",
+   "kind": "card",
+   "start": 13.15,
+   "dur": 24.45,
+   "mock": false,
+   "tag": "ILLUSTRATION"
+  },
+  {
+   "id": "rules",
+   "kind": "card",
+   "start": 37.59,
+   "dur": 16.6,
+   "mock": false,
+   "tag": "ILLUSTRATION"
+  },
+  {
+   "id": "install",
+   "kind": "terminal",
+   "start": 54.2,
+   "dur": 23.37,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "doctor",
+   "kind": "terminal",
+   "start": 77.56,
+   "dur": 23.85,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "goal-card",
+   "kind": "card",
+   "start": 101.41,
+   "dur": 16.97,
+   "mock": false,
+   "tag": "ILLUSTRATION"
+  },
+  {
+   "id": "demo-app",
+   "kind": "image",
+   "start": 118.38,
+   "dur": 8.31,
+   "mock": false,
+   "tag": "LIVE RECORDING"
+  },
+  {
+   "id": "goal-start",
+   "kind": "terminal",
+   "start": 126.68,
+   "dur": 26.85,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "goal-agents",
+   "kind": "terminal",
+   "start": 153.53,
+   "dur": 16.4,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "goal-rounds",
+   "kind": "terminal",
+   "start": 169.93,
+   "dur": 20.83,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "goal-video",
+   "kind": "video",
+   "start": 190.76,
+   "dur": 22.9,
+   "mock": false,
+   "tag": "LIVE RECORDING"
+  },
+  {
+   "id": "goal-load",
+   "kind": "terminal",
+   "start": 213.66,
+   "dur": 19.58,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "goal-regression",
+   "kind": "video",
+   "start": 233.24,
+   "dur": 41.87,
+   "mock": false,
+   "tag": "LIVE RECORDING"
+  },
+  {
+   "id": "goal-refute-run",
+   "kind": "terminal",
+   "start": 275.11,
+   "dur": 11.74,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "goal-refuter",
+   "kind": "terminal",
+   "start": 286.85,
+   "dur": 26.08,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "report",
+   "kind": "scroll",
+   "start": 312.93,
+   "dur": 35.63,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "deliver",
+   "kind": "terminal",
+   "start": 348.56,
+   "dur": 25.9,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "hooks-file",
+   "kind": "terminal",
+   "start": 374.46,
+   "dur": 16.73,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "hooks-block",
+   "kind": "terminal",
+   "start": 391.2,
+   "dur": 21.21,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "desktop",
+   "kind": "terminal",
+   "start": 412.41,
+   "dur": 32.93,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "timesheet",
+   "kind": "terminal",
+   "start": 445.34,
+   "dur": 26.8,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "odoo",
+   "kind": "terminal",
+   "start": 472.14,
+   "dur": 23.51,
+   "mock": false,
+   "tag": "REAL OUTPUT"
+  },
+  {
+   "id": "help",
+   "kind": "card",
+   "start": 495.65,
+   "dur": 19.8,
+   "mock": false,
+   "tag": "ILLUSTRATION"
+  }
+ ]
+}

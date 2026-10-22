@@ -1,0 +1,7 @@
+[
+  {"do": "open", "app": "notepad", "case": "DT-01"},
+  {"do": "wait", "sec": 1.5},
+  {"do": "type", "window": "Notepad", "text": "ShipShape desktop check (fake data)"},
+  {"do": "screenshot", "name": "typed", "case": "DT-02"},
+  {"do": "key", "window": "Notepad", "keys": ["ctrl", "z"]}
+]

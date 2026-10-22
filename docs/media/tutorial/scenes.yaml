@@ -1,0 +1,431 @@
+# ShipShape tutorial: scene definitions. Single source for the video, captions (en + ar), chapters,
+# script.md, the teaser and the thumbnail. Rebuild with:  python make_tutorial.py all
+#
+# Scene kinds
+#   title | card     text slide (heading, kicker, bullets)
+#   terminal         replays REAL captured command output (capture/transcripts/<name>.json) or a kit file excerpt
+#   video            a real Playwright recording from the QA run (raw, no audio) scaled into the frame
+#   scroll           a tall full-page screenshot (e.g. report.html) scrolled smoothly
+#   image            one screenshot in the frame
+# Any scene may list `requires:` (paths relative to the kit root). If one is missing at build time, the
+# scene renders as a labelled mock card: "COMING IN THIS BUILD".
+# Tags shown top-right: REAL OUTPUT | LIVE RECORDING | ILLUSTRATION | MOCK
+
+meta:
+  title: "ShipShape: From Zero to Self-Testing in 10 Minutes"
+  voice: en-US-AndrewNeural
+  rate: "-4%"
+  run_goal: "signup to welcome works on the demo shop"
+
+scenes:
+  # ---------------------------------------------------------------- 1. what it is
+  - id: title
+    chapter: What ShipShape is
+    kind: title
+    heading: ShipShape
+    sub: your autonomous QA crew for Claude Code
+    kicker: From zero to self-testing in 10 minutes
+    lines:
+      - en: "Welcome to ShipShape, your autonomous QA crew for Claude Code."
+        ar: "أهلاً بك في ShipShape، فريق ضمان الجودة الآلي الخاص بك داخل Claude Code."
+      - en: "In the next ten minutes we go from zero to an app that tests itself, with real output from a real run."
+        ar: "خلال الدقائق العشر القادمة سننتقل من الصفر إلى تطبيق يختبر نفسه، بمخرجات حقيقية من تشغيل حقيقي."
+  - id: what
+    kind: card
+    kicker: What it is
+    heading: A QA team you install as a plugin
+    tag: ILLUSTRATION
+    bullets:
+      - "You give a goal in plain words: /qa-goal signup works"
+      - "Code review + security review before any test"
+      - "Every test runs twice, recorded and narrated"
+      - "Load test, live regression, and a refuter that attacks every failure"
+      - "One offline HTML report, delivered to your team on request"
+    lines:
+      - en: "You give it a goal in plain words, like: signup works. ShipShape plans the checks and runs them."
+        ar: "تعطيه هدفاً بكلمات بسيطة، مثل: التسجيل يعمل. ويقوم ShipShape بتخطيط الفحوصات وتشغيلها."
+      - en: "It reviews the code and its security first, then runs every test twice, records it on video, and narrates it."
+        ar: "يراجع الكود وأمانه أولاً، ثم يشغّل كل اختبار مرتين، ويسجّله بالفيديو مع تعليق صوتي."
+      - en: "A load test and a live regression follow, and a refuter tries to prove every failure wrong before anyone files a bug."
+        ar: "بعد ذلك يأتي اختبار الحمل واختبار الانحدار، ثم يحاول المُفنِّد إثبات خطأ كل فشل قبل أن يُسجَّل أي خطأ."
+  - id: rules
+    kind: card
+    kicker: Safety first
+    heading: Built-in guard rails
+    tag: ILLUSTRATION
+    bullets:
+      - "Local and staging hosts only, from an allow-list"
+      - "Test data only; it never pays, never deletes"
+      - "Nothing leaves your machine until the owner says send"
+      - "Plain-language hooks enforce the rules inside Claude Code"
+    lines:
+      - en: "It is also careful. It only touches allow-listed local or staging hosts, uses test data, never pays, and sends nothing until you say send."
+        ar: "وهو حريص أيضاً: لا يعمل إلا على خوادم محلية أو تجريبية مسموح بها، ويستخدم بيانات اختبار فقط، ولا يدفع أبداً، ولا يرسل شيئاً حتى تقول: أرسل."
+      - en: "Everything in this video runs against a small local demo shop with fake data."
+        ar: "كل ما في هذا الفيديو يعمل على متجر تجريبي محلي صغير ببيانات وهمية."
+
+  # ---------------------------------------------------------------- 2. install
+  - id: install
+    chapter: Install
+    kind: terminal
+    kicker: Install
+    heading: Add the marketplace, install the plugin
+    tag: REAL OUTPUT
+    items: [{t: install}]
+    lines:
+      - en: "Installing takes two commands. First add the ShipShape marketplace, then install the plugin from it."
+        ar: "التثبيت يحتاج أمرين فقط: أولاً أضف متجر ShipShape، ثم ثبّت الإضافة منه."
+      - en: "Inside Claude Code you can type the same thing as slash plugin commands. Here the plugin list shows it installed and enabled."
+        ar: "داخل Claude Code يمكنك كتابة نفس الأوامر كأوامر plugin. وهنا تُظهر القائمة أن الإضافة مثبتة ومفعّلة."
+      - en: "On a fresh machine, the install script in the bin folder sets up Python packages and the Playwright browser for you."
+        ar: "وعلى جهاز جديد، يقوم سكربت التثبيت في مجلد bin بإعداد حزم Python ومتصفح Playwright نيابةً عنك."
+
+  # ---------------------------------------------------------------- 3. doctor
+  - id: doctor
+    chapter: Doctor
+    kind: terminal
+    kicker: Doctor
+    heading: Is everything the crew needs installed?
+    tag: REAL OUTPUT
+    requires: [scripts/doctor.py]
+    items: [{t: doctor}]
+    lines:
+      - en: "Next, run the doctor. It checks Python, Node, ffmpeg, the Playwright browser, the pinned browser tools, and the narration voice."
+        ar: "بعد ذلك شغّل أداة الفحص doctor. فهي تتحقق من Python وNode وffmpeg ومتصفح Playwright وأدوات المتصفح المثبتة وصوت التعليق."
+      - en: "Optional extras, like desktop control or a heavier load engine, are marked optional, with the fix for each."
+        ar: "الإضافات الاختيارية، مثل التحكم في سطح المكتب أو محرك حمل أثقل، تظهر كاختيارية مع طريقة إصلاح كل منها."
+      - en: "Channel secrets are only checked by name. Their values are never printed."
+        ar: "أما مفاتيح قنوات الإرسال فيُتحقق منها بالاسم فقط، ولا تُطبع قيمها أبداً."
+
+  # ---------------------------------------------------------------- 4. /qa-goal
+  - id: goal-card
+    chapter: "/qa-goal on the example app"
+    kind: card
+    kicker: "/qa-goal"
+    heading: One goal, the whole crew
+    tag: ILLUSTRATION
+    bullets:
+      - "/qa-goal signup to welcome works on the demo shop"
+      - "1 history  2 ledger  3 security  4 rounds x2"
+      - "5 load  6 report  7 deliver (dry-run)"
+      - "Agents: code review, refuter, bug filing"
+    lines:
+      - en: "Now the main event. In Claude Code, type /qa-goal, followed by what should work. Here: signup to welcome works on the demo shop."
+        ar: "والآن الحدث الرئيسي. في Claude Code اكتب الأمر qa-goal متبوعاً بما يجب أن يعمل، وهنا: التسجيل حتى صفحة الترحيب يعمل في المتجر التجريبي."
+      - en: "The QA lead agent drives seven steps, and hands the judgement calls to specialist agents."
+        ar: "يقود وكيل قائد الجودة سبع خطوات، ويُسند القرارات التي تحتاج تقديراً إلى وكلاء متخصصين."
+  - id: demo-app
+    kind: image
+    kicker: The example app
+    heading: The local demo shop (fake data)
+    tag: LIVE RECORDING
+    image: "@run/round-01/signup/pass-1/01-TC-01-pass.png"
+    lines:
+      - en: "This is the example app that ships with the kit: a tiny sign-up page on localhost. Everything on it is fake."
+        ar: "هذا هو التطبيق التجريبي المرفق مع الحزمة: صفحة تسجيل صغيرة على الجهاز المحلي، وكل ما فيها وهمي."
+  - id: goal-start
+    kind: terminal
+    kicker: "/qa-goal  ·  steps 1 to 3"
+    heading: History, ledger, then code and security review
+    tag: REAL OUTPUT
+    items: [{t: qa_goal, upto: "== 4/7"}]
+    lines:
+      - en: "Step one reads earlier runs, so it knows the baseline and any flaky cases. Step two opens a ledger, which makes the whole run resumable."
+        ar: "الخطوة الأولى تقرأ التشغيلات السابقة لتعرف خط الأساس والحالات غير المستقرة. والخطوة الثانية تفتح سجلاً يجعل التشغيل كله قابلاً للاستئناف."
+      - en: "Step three is the review. The code reviewer reads the diff before any test runs, and the security pass sweeps for secrets and checks headers on the allow-listed host."
+        ar: "الخطوة الثالثة هي المراجعة: يقرأ مراجع الكود التغييرات قبل أي اختبار، ويبحث فحص الأمان عن الأسرار المكشوفة ويتحقق من الترويسات على الخادم المسموح به."
+      - en: "Security findings stay private. Only the count leaves this folder."
+        ar: "نتائج الأمان تبقى خاصة، ولا يخرج من هذا المجلد إلا عددها."
+  - id: goal-agents
+    kind: terminal
+    kicker: "/qa-goal  ·  the agent layer"
+    heading: Specialist agents in the kit
+    tag: REAL OUTPUT
+    requires: [workflows/full-qa.workflow.js]
+    items:
+      - {file: agents/qa-code-reviewer.md, grep: "^(name|description):"}
+      - {file: agents/qa-security-reviewer.md, grep: "^(name):"}
+      - {file: agents/qa-automation-tester.md, grep: "^(name|description):"}
+      - {file: agents/qa-refuter.md, grep: "^(name|description):"}
+    lines:
+      - en: "Each role is a plain agent file you can read and change: the code reviewer, the security reviewer, the automation tester, and the refuter."
+        ar: "كل دور هو ملف وكيل بسيط يمكنك قراءته وتعديله: مراجع الكود، ومراجع الأمان، ومختبِر الأتمتة، والمُفنِّد."
+      - en: "A workflow file runs them in order, with the review and the security pass side by side."
+        ar: "ويشغّلهم ملف سير عمل بالترتيب، مع تشغيل المراجعة وفحص الأمان جنباً إلى جنب."
+  - id: goal-rounds
+    kind: terminal
+    kicker: "/qa-goal  ·  step 4"
+    heading: Every plan runs twice
+    tag: REAL OUTPUT
+    items: [{t: qa_goal, from: "== 4/7", upto: "== 5/7"}]
+    lines:
+      - en: "Step four runs every test plan twice, as two independent passes. A result only counts if both passes agree. If they disagree, the case is marked flaky."
+        ar: "الخطوة الرابعة تشغّل كل خطة اختبار مرتين كتمريرتين مستقلتين. ولا تُحتسب النتيجة إلا إذا اتفقت التمريرتان، وإن اختلفتا تُعلَّم الحالة بأنها غير مستقرة."
+      - en: "Here, four checks pass, and one is blocked on purpose: the never-pay rule stopped the run at the Pay now button and asked for a human."
+        ar: "هنا نجحت أربعة فحوصات، وتوقف واحد عن قصد: قاعدة عدم الدفع أوقفت التشغيل عند زر الدفع وطلبت تدخل إنسان."
+  - id: goal-video
+    kind: video
+    kicker: "/qa-goal  ·  step 4"
+    heading: "The recorded pass: signup plan"
+    tag: LIVE RECORDING
+    src: "@run/round-01/signup/pass-1/video-raw/*.webm"
+    lines:
+      - en: "Every pass is recorded in a real browser. This is pass one of the signup plan."
+        ar: "كل تمريرة تُسجَّل في متصفح حقيقي، وهذه التمريرة الأولى لخطة التسجيل."
+      - en: "First it submits the form empty and expects a clear error. Then it fills in a test user with an example address and expects the welcome message."
+        ar: "أولاً يرسل النموذج فارغاً ويتوقع رسالة خطأ واضحة، ثم يملأ بيانات مستخدم تجريبي بعنوان بريد مثالي ويتوقع رسالة الترحيب."
+      - en: "Screenshots, a Playwright trace, console errors and failed network calls are all saved as evidence."
+        ar: "وتُحفظ لقطات الشاشة وملف تتبع Playwright وأخطاء وحدة التحكم وطلبات الشبكة الفاشلة كلها كأدلة."
+  - id: goal-load
+    kind: terminal
+    kicker: "/qa-goal  ·  step 5"
+    heading: Load test on the allow-listed host
+    tag: REAL OUTPUT
+    items: [{t: qa_goal, from: "== 5/7", upto: "== 6/7"}]
+    lines:
+      - en: "Step five is the load test. The smoke profile sent forty four requests, with a p95 of about sixty seven milliseconds and zero errors."
+        ar: "الخطوة الخامسة هي اختبار الحمل. أرسل ملف الاختبار السريع أربعة وأربعين طلباً، بزمن استجابة p95 حوالي سبعة وستين جزءاً من الثانية وبدون أخطاء."
+      - en: "Ramp, soak and spike profiles are there too, and anything that looks like production is refused unless the owner allows it."
+        ar: "وتتوفر أيضاً ملفات التصاعد والتحمل الطويل والذروة المفاجئة، وأي خادم يبدو كبيئة إنتاج يُرفض ما لم يسمح المالك بذلك."
+  - id: goal-regression
+    kind: video
+    kicker: "/qa-goal  ·  live regression"
+    heading: Narrated regression video, made by the kit
+    tag: LIVE RECORDING
+    src: "@run/round-01/pay-guard/pass-1/pay-guard.mp4"
+    keep_audio: true
+    embedded_srt: "@run/round-01/pay-guard/pass-1/captions.srt"
+    embedded_ar:
+      - "نفتح صفحة التسجيل في المتجر التجريبي المحلي، وكل شيء هنا بيانات اختبار وهمية."
+      - "أولاً، حالة سلبية: نرسل النموذج فارغاً."
+      - "النموذج يرفض الاسم الفارغ ويوضح السبب."
+      - "الآن نملأ بيانات مستخدم تجريبي بعنوان بريد مثالي."
+      - "تم إنشاء الحساب، ورسالة الترحيب تحيي المستخدم التجريبي."
+    lines:
+      - en: "The live regression recorder replays your regression list as a real user, read-only on staging or live. Here is the narrated video the kit produced itself."
+        ar: "يعيد مسجّل الانحدار تشغيل قائمة الاختبارات كمستخدم حقيقي، للقراءة فقط على بيئة التجربة أو الإنتاج. وهذا هو الفيديو المروي الذي أنتجته الحزمة بنفسها."
+  - id: goal-refute-run
+    kind: terminal
+    kicker: "/qa-goal  ·  a failure"
+    heading: "A failure pauses the loop: verify, then refute"
+    tag: REAL OUTPUT
+    items: [{t: refute_run, from: "== 4/7", upto: "== 6/7"}]
+    lines:
+      - en: "Now a failure. A second plan expects a returning user to see: welcome back. Both passes fail, so the loop pauses and asks for verify and refute."
+        ar: "والآن حالة فشل: خطة ثانية تتوقع أن يرى المستخدم العائد عبارة: مرحباً بعودتك. فشلت التمريرتان، فتوقفت الحلقة وطلبت التحقق والتفنيد."
+  - id: goal-refuter
+    kind: terminal
+    kicker: "/qa-goal  ·  refuter"
+    heading: The refuter tries to kill the claim
+    tag: REAL OUTPUT
+    items: [{t: refuter}, {t: refute_ledger}]
+    lines:
+      - en: "The refuter is the second agent of a two-agent bar. It works on its own path and tries hard to prove the failure wrong."
+        ar: "المُفنِّد هو الوكيل الثاني في قاعدة الوكيلَين. يعمل بطريقته المستقلة ويحاول بجدية إثبات أن هذا الفشل خاطئ."
+      - en: "Its verdict: refuted. Neither the app nor the original plan ever promised welcome back. The test expectation was wrong, not the product."
+        ar: "وحكمه: مرفوض. فلا التطبيق ولا الخطة الأصلية وعدا بعبارة مرحباً بعودتك، أي أن توقع الاختبار هو الخاطئ وليس المنتج."
+      - en: "So no bug is filed, and the ledger shows zero open bugs. That is how ShipShape keeps false alarms out of your tracker."
+        ar: "لذلك لا يُسجَّل أي خطأ، ويُظهر السجل صفر أخطاء مفتوحة. هكذا يُبعد ShipShape الإنذارات الكاذبة عن نظام تتبع المهام لديك."
+
+  # ---------------------------------------------------------------- 5. report
+  - id: report
+    chapter: The local HTML report
+    kind: scroll
+    kicker: Report
+    heading: "report.html: one file, works offline"
+    tag: REAL OUTPUT
+    image: "@build/report_full.png"
+    lines:
+      - en: "Step six writes one self-contained HTML report. It opens offline, so you can attach it anywhere."
+        ar: "الخطوة السادسة تكتب تقريراً واحداً بصيغة HTML مكتفياً بذاته، يفتح دون اتصال بالإنترنت، فيمكنك إرفاقه في أي مكان."
+      - en: "At the top, the verdict and the counts: four pass, zero fail, one blocked. Then every case with its evidence, and the videos you can play in place."
+        ar: "في الأعلى الحكم والأرقام: أربعة نجاح، صفر فشل، وواحد متوقف. ثم كل حالة مع دليلها، والفيديوهات التي يمكن تشغيلها مباشرة."
+      - en: "Further down: console and network checks, the load chart, bugs that survived the refuter, open human gates, and the trend across runs."
+        ar: "وفي الأسفل: فحوصات وحدة التحكم والشبكة، ومخطط الحمل، والأخطاء التي صمدت أمام المُفنِّد، والبوابات البشرية المفتوحة، والاتجاه عبر التشغيلات."
+      - en: "There is also a spoken summary, so a non-technical owner can just listen to the result."
+        ar: "وهناك أيضاً ملخص صوتي، حتى يستطيع المالك غير التقني أن يستمع إلى النتيجة فقط."
+
+  # ---------------------------------------------------------------- 6. delivery
+  - id: deliver
+    chapter: Auto-delivery dry run
+    kind: terminal
+    kicker: "/qa-deliver"
+    heading: Telegram and WhatsApp, dry-run by default
+    tag: REAL OUTPUT
+    items: [{t: deliver}]
+    lines:
+      - en: "Step seven is delivery to Telegram, WhatsApp, Slack, email or a webhook, whatever your config lists."
+        ar: "الخطوة السابعة هي الإرسال إلى تيليجرام أو واتساب أو سلاك أو البريد أو webhook، حسب ما يحدده ملف الإعدادات."
+      - en: "First a privacy scan of everything that would leave: zero findings. Then a dry run that prints exactly what would be sent, with the tokens left out."
+        ar: "أولاً فحص خصوصية لكل ما سيخرج: لا توجد ملاحظات. ثم تشغيل تجريبي يطبع بالضبط ما سيُرسل، مع إخفاء المفاتيح."
+      - en: "Nothing leaves the machine until the owner says send, and a channel that is not in the config is refused."
+        ar: "لا يخرج شيء من الجهاز حتى يقول المالك: أرسل، وأي قناة غير موجودة في الإعدادات تُرفض."
+
+  # ---------------------------------------------------------------- 7. hooks
+  - id: hooks-file
+    chapter: A plain-language hook blocks an unsafe action
+    kind: terminal
+    kicker: Hooks
+    heading: "Rules written in plain language"
+    tag: REAL OUTPUT
+    requires: [hooks/hooks.json]
+    items: [{file: hooks/hooks.json, grep: "Guard for git push|Block it|Guard for QA delivery|Guard for desktop control", wrap: true}]
+    lines:
+      - en: "The guard rails are not just advice. The plugin ships hooks that Claude Code runs before risky tools, and most of them are written in plain language."
+        ar: "قواعد الحماية ليست مجرد نصائح. فالإضافة تأتي بخطافات يشغّلها Claude Code قبل الأدوات الخطرة، ومعظمها مكتوب بلغة بسيطة."
+      - en: "For example: block a git push that force-pushes, or pushes to main or production."
+        ar: "مثلاً: امنع أي git push يدفع بالقوة، أو يدفع إلى main أو إلى بيئة الإنتاج."
+  - id: hooks-block
+    kind: terminal
+    kicker: Hooks
+    heading: Claude tries a force push to main
+    tag: REAL OUTPUT
+    items: [{t: hook_push}, {t: hook_commit}]
+    lines:
+      - en: "Here we asked Claude, with the plugin loaded, to force-push to main in a throwaway repo. The hook blocked it before git was even called."
+        ar: "هنا طلبنا من Claude، والإضافة محمّلة، أن يدفع بالقوة إلى main في مستودع تجريبي. فمنعه الخطاف قبل أن يُستدعى git أصلاً."
+      - en: "A second, deterministic hook scans every commit. A fake bot token was staged by mistake, so the commit is blocked, and only the kind and line are shown, never the value."
+        ar: "وهناك خطاف ثانٍ ثابت يفحص كل commit. أُضيف مفتاح بوت وهمي بالخطأ، فمُنع الـ commit، ولا يظهر إلا نوع المشكلة ورقم السطر، وليس القيمة أبداً."
+
+  # ---------------------------------------------------------------- 8. desktop
+  - id: desktop
+    chapter: Desktop control (gated)
+    kind: terminal
+    kicker: Desktop control
+    heading: Outside the browser, behind gates
+    tag: REAL OUTPUT
+    requires: [scripts/desktop.py]
+    items: [{t: desktop}]
+    lines:
+      - en: "Some flows live outside the browser: native apps, file pickers, OS dialogs. ShipShape can drive the desktop too, but only behind gates."
+        ar: "بعض المسارات تكون خارج المتصفح: تطبيقات أصلية، ونوافذ اختيار الملفات، ونوافذ النظام. ويستطيع ShipShape التحكم في سطح المكتب أيضاً، لكن خلف بوابات حماية فقط."
+      - en: "With desktop control off in the config, the first step is refused. Turned on, only allow-listed apps run, and the delete step stops and asks the user first."
+        ar: "عندما يكون التحكم معطلاً في الإعدادات تُرفض الخطوة الأولى. وعند تفعيله لا تعمل إلا التطبيقات المسموح بها، وخطوة الحذف تتوقف وتسأل المستخدم أولاً."
+      - en: "Banking, payment and password apps are always refused, and every action is logged. These are dry runs, so nothing on this desktop was touched."
+        ar: "وتطبيقات البنوك والدفع وكلمات المرور مرفوضة دائماً، وكل إجراء يُسجَّل. وهذه تشغيلات تجريبية، فلم يُلمس أي شيء على سطح المكتب."
+
+  # ---------------------------------------------------------------- 9. timesheet
+  - id: timesheet
+    chapter: "/timesheet"
+    kind: terminal
+    kicker: "/timesheet"
+    heading: Real hours from Claude Code logs
+    tag: REAL OUTPUT
+    items: [{t: timesheet}]
+    lines:
+      - en: "The kit is not only QA. /timesheet measures real working hours from Claude Code session logs, merging sub-agents so parallel work counts once."
+        ar: "الحزمة ليست لضمان الجودة فقط. فأمر timesheet يقيس ساعات العمل الفعلية من سجلات جلسات Claude Code، ويدمج الوكلاء الفرعيين حتى يُحتسب العمل المتوازي مرة واحدة."
+      - en: "Idle gaps are cut, blocks are mapped to tasks, and you get an Excel sheet plus Odoo import rows. This run uses synthetic logs."
+        ar: "تُحذف فترات الخمول، وتُربط فترات العمل بالمهام، وتحصل على ملف Excel وصفوف جاهزة للاستيراد إلى Odoo. وهذا التشغيل يستخدم سجلات مصطنعة."
+      - en: "It never writes to Odoo by itself. A human reviews the file first."
+        ar: "ولا يكتب في Odoo من تلقاء نفسه أبداً، بل يراجع إنسان الملف أولاً."
+
+  # ---------------------------------------------------------------- 10. odoo-check
+  - id: odoo
+    chapter: "/odoo-check"
+    kind: terminal
+    kicker: "/odoo-check"
+    heading: Pre-deploy checks for an Odoo module
+    tag: REAL OUTPUT
+    items: [{t: odoo}]
+    lines:
+      - en: "/odoo-check runs pre-deploy checks on an Odoo module. This fake loyalty module has four problems."
+        ar: "أمر odoo-check يشغّل فحوصات ما قبل النشر على وحدة Odoo. وهذه الوحدة الوهمية لنقاط الولاء فيها أربع مشكلات."
+      - en: "A cron outside a no-update block, no neutralize script, a raw commit inside a model, and no tests. Each one is a classic way to break production."
+        ar: "مهمة مجدولة خارج كتلة عدم التحديث، ولا يوجد سكربت تحييد، واستدعاء commit مباشر داخل النموذج، ولا توجد اختبارات. وكل واحدة منها طريقة معروفة لكسر بيئة الإنتاج."
+      - en: "The Odoo expert agent then explains each fix before the deploy."
+        ar: "ثم يشرح وكيل خبير Odoo طريقة إصلاح كل منها قبل النشر."
+
+  # ---------------------------------------------------------------- 11. help
+  - id: help
+    chapter: Where to get help
+    kind: card
+    kicker: Where to get help
+    heading: Next steps
+    tag: ILLUSTRATION
+    bullets:
+      - "Run the doctor first: it prints the fix for anything missing"
+      - "Read the README and the docs folder in the repo"
+      - "Every command has a skill: ask Claude \"how do I use /qa-goal?\""
+      - "Questions and bugs: open an issue on the repo"
+    lines:
+      - en: "When you get stuck, run the doctor first. It prints the fix for anything missing."
+        ar: "إذا واجهتك مشكلة، شغّل أداة الفحص doctor أولاً، فهي تطبع طريقة إصلاح أي شيء ناقص."
+      - en: "The README and the docs folder cover every command, and you can simply ask Claude how to use any of them."
+        ar: "ويشرح ملف README ومجلد docs كل الأوامر، ويمكنك ببساطة أن تسأل Claude عن طريقة استخدام أي منها."
+      - en: "For questions or bugs, open an issue on the repository. Thanks for watching, and happy shipping."
+        ar: "وللأسئلة أو الأخطاء، افتح issue في المستودع. شكراً للمشاهدة، ونتمنى لك إطلاقاً موفقاً."
+
+# ------------------------------------------------------------------ 60-second teaser
+teaser:
+  - id: t-title
+    kind: title
+    heading: ShipShape
+    sub: your autonomous QA crew for Claude Code
+    kicker: One goal. The whole QA team.
+    lines:
+      - en: "Meet ShipShape: an autonomous QA crew that lives in Claude Code."
+        ar: "تعرّف على ShipShape: فريق ضمان جودة آلي يعيش داخل Claude Code."
+  - id: t-rounds
+    kind: video
+    kicker: "/qa-goal"
+    heading: Every test runs twice, on video
+    tag: LIVE RECORDING
+    src: "@run/round-01/signup/pass-1/video-raw/*.webm"
+    lines:
+      - en: "Give it a goal. It reviews your code and security, then runs every test twice in a real browser, on video."
+        ar: "أعطه هدفاً، فيراجع الكود والأمان، ثم يشغّل كل اختبار مرتين في متصفح حقيقي ويسجّله بالفيديو."
+  - id: t-refute
+    kind: terminal
+    kicker: Refuter
+    heading: False alarms never reach your tracker
+    tag: REAL OUTPUT
+    items: [{t: refuter}]
+    lines:
+      - en: "A refuter attacks every failure, so false alarms never become bugs."
+        ar: "ويهاجم المُفنِّد كل حالة فشل، فلا تتحول الإنذارات الكاذبة إلى أخطاء مسجلة."
+      - en: "Here it proved the test expected the wrong text, so no bug was filed."
+        ar: "وهنا أثبت أن الاختبار كان يتوقع نصاً خاطئاً، فلم يُسجَّل أي خطأ."
+  - id: t-report
+    kind: scroll
+    kicker: Report
+    heading: One offline report
+    tag: REAL OUTPUT
+    image: "@build/report_full.png"
+    lines:
+      - en: "You get one offline report with load results, evidence and trends, delivered to Telegram or WhatsApp only when you say send."
+        ar: "وتحصل على تقرير واحد يعمل دون إنترنت، فيه نتائج الحمل والأدلة والاتجاهات، ويُرسل إلى تيليجرام أو واتساب فقط عندما تقول: أرسل."
+  - id: t-hook
+    kind: terminal
+    kicker: Hooks
+    heading: Plain-language guard rails
+    tag: REAL OUTPUT
+    items: [{t: hook_push}]
+    lines:
+      - en: "Plain-language hooks block unsafe moves, like a force push to main."
+        ar: "والخطافات المكتوبة بلغة بسيطة تمنع التصرفات الخطرة، مثل الدفع بالقوة إلى main."
+  - id: t-more
+    kind: card
+    kicker: And more
+    heading: Beyond the browser
+    tag: ILLUSTRATION
+    bullets:
+      - "Desktop control, behind safety gates"
+      - "/timesheet: real hours from Claude Code logs"
+      - "/odoo-check: pre-deploy checks for Odoo modules"
+    lines:
+      - en: "Plus gated desktop control, real timesheets from your Claude Code logs, and pre-deploy checks for Odoo modules."
+        ar: "بالإضافة إلى التحكم في سطح المكتب خلف بوابات حماية، وجداول ساعات عمل حقيقية من سجلات Claude Code، وفحوصات ما قبل النشر لوحدات Odoo."
+  - id: t-end
+    kind: title
+    heading: ShipShape
+    sub: "Install: /plugin marketplace add, then /plugin install"
+    kicker: Full tutorial on the repo
+    lines:
+      - en: "Install it in two commands, and watch the full ten minute tutorial to go from zero to self-testing."
+        ar: "ثبّته بأمرين، وشاهد الشرح الكامل في عشر دقائق لتنتقل من الصفر إلى الاختبار الذاتي."
+
+thumbnail:
+  heading: ShipShape
+  sub: From Zero to Self-Testing in 10 Minutes
+  kicker: Your autonomous QA crew for Claude Code

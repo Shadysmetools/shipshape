@@ -1,0 +1,30 @@
+# Local run output and evidence (never commit: may contain screenshots of real screens)
+qa-runs/
+qa-evidence/
+runs/
+load-results/
+*.log
+# Tutorial intermediates (sources and final MP4s live elsewhere in docs/media/tutorial)
+docs/media/tutorial/capture/
+docs/media/tutorial/build/
+# Secrets and local config
+.env
+.env.*
+*.pem
+*.key
+.secrets/
+qa.config.local.yaml
+# Python / Node / tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+package-lock.json
+.DS_Store
+Thumbs.db
+nul
+
+# Rendered videos live on GitHub Releases, not in history
+docs/media/tutorial/out/*.mp4

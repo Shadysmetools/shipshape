@@ -1,0 +1,21 @@
+{
+  "name": "smetools-agent-kit",
+  "version": "0.1.0",
+  "description": "ShipShape: your autonomous QA crew. Goal-driven QA team (code + security review, automated tests run twice, load tests, live regression, desktop control, narrated video evidence, refuter, offline HTML report, Telegram/WhatsApp/Slack/email delivery), plus a timesheet agent that measures real hours from Claude Code logs and an Odoo expert with safe staging/deploy rules.",
+  "author": {
+    "name": "SMEtools"
+  },
+  "keywords": [
+    "qa",
+    "playwright",
+    "chrome-devtools",
+    "video-evidence",
+    "narration",
+    "load-testing",
+    "security-review",
+    "timesheet",
+    "odoo"
+  ],
+  "license": "UNLICENSED",
+  "icon": "assets/icon.png"
+}

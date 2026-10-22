@@ -1,0 +1,388 @@
+1
+00:00:00,550 --> 00:00:05,374
+Welcome to ShipShape, your autonomous QA crew for Claude Code.
+
+2
+00:00:05,704 --> 00:00:12,568
+In the next ten minutes we go from zero to an app that tests itself, with real output from a real run.
+
+3
+00:00:13,698 --> 00:00:20,466
+You give it a goal in plain words, like: signup works. ShipShape plans the checks and runs them.
+
+4
+00:00:20,796 --> 00:00:27,440
+It reviews the code and its security first, then runs every test twice, records it on video,
+
+5
+00:00:27,440 --> 00:00:28,716
+and narrates it.
+
+6
+00:00:29,046 --> 00:00:31,820
+A load test and a live regression follow,
+
+7
+00:00:31,820 --> 00:00:37,014
+and a refuter tries to prove every failure wrong before anyone files a bug.
+
+8
+00:00:38,144 --> 00:00:45,274
+It is also careful. It only touches allow-listed local or staging hosts, uses test data, never pays,
+
+9
+00:00:45,274 --> 00:00:48,032
+and sends nothing until you say send.
+
+10
+00:00:48,362 --> 00:00:53,618
+Everything in this video runs against a small local demo shop with fake data.
+
+11
+00:00:54,748 --> 00:01:01,276
+Installing takes two commands. First add the ShipShape marketplace, then install the plugin from it.
+
+12
+00:01:01,606 --> 00:01:06,065
+Inside Claude Code you can type the same thing as slash plugin commands.
+
+13
+00:01:06,065 --> 00:01:09,406
+Here the plugin list shows it installed and enabled.
+
+14
+00:01:09,736 --> 00:01:10,914
+On a fresh machine,
+
+15
+00:01:10,914 --> 00:01:16,984
+the install script in the bin folder sets up Python packages and the Playwright browser for you.
+
+16
+00:01:18,115 --> 00:01:26,212
+Next, run the doctor. It checks Python, Node, ffmpeg, the Playwright browser, the pinned browser tools,
+
+17
+00:01:26,212 --> 00:01:28,219
+and the narration voice.
+
+18
+00:01:28,549 --> 00:01:34,349
+Optional extras, like desktop control or a heavier load engine, are marked optional,
+
+19
+00:01:34,349 --> 00:01:35,989
+with the fix for each.
+
+20
+00:01:36,319 --> 00:01:40,831
+Channel secrets are only checked by name. Their values are never printed.
+
+21
+00:01:41,961 --> 00:01:48,201
+Now the main event. In Claude Code, type /qa-goal, followed by what should work. Here:
+
+22
+00:01:48,201 --> 00:01:51,297
+signup to welcome works on the demo shop.
+
+23
+00:01:51,627 --> 00:01:57,795
+The QA lead agent drives seven steps, and hands the judgement calls to specialist agents.
+
+24
+00:01:58,927 --> 00:02:04,335
+This is the example app that ships with the kit: a tiny sign-up page on localhost.
+
+25
+00:02:04,335 --> 00:02:06,103
+Everything on it is fake.
+
+26
+00:02:07,233 --> 00:02:12,640
+Step one reads earlier runs, so it knows the baseline and any flaky cases.
+
+27
+00:02:12,640 --> 00:02:17,217
+Step two opens a ledger, which makes the whole run resumable.
+
+28
+00:02:17,547 --> 00:02:22,609
+Step three is the review. The code reviewer reads the diff before any test runs,
+
+29
+00:02:22,609 --> 00:02:28,107
+and the security pass sweeps for secrets and checks headers on the allow-listed host.
+
+30
+00:02:28,437 --> 00:02:32,949
+Security findings stay private. Only the count leaves this folder.
+
+31
+00:02:34,079 --> 00:02:37,748
+Each role is a plain agent file you can read and change:
+
+32
+00:02:37,748 --> 00:02:43,175
+the code reviewer, the security reviewer, the automation tester, and the refuter.
+
+33
+00:02:43,505 --> 00:02:49,337
+A workflow file runs them in order, with the review and the security pass side by side.
+
+34
+00:02:50,479 --> 00:02:55,179
+Step four runs every test plan twice, as two independent passes.
+
+35
+00:02:55,179 --> 00:03:01,615
+A result only counts if both passes agree. If they disagree, the case is marked flaky.
+
+36
+00:03:01,945 --> 00:03:05,239
+Here, four checks pass, and one is blocked on purpose:
+
+37
+00:03:05,239 --> 00:03:10,177
+the never-pay rule stopped the run at the Pay now button and asked for a human.
+
+38
+00:03:11,313 --> 00:03:16,809
+Every pass is recorded in a real browser. This is pass one of the signup plan.
+
+39
+00:03:17,139 --> 00:03:20,701
+First it submits the form empty and expects a clear error.
+
+40
+00:03:20,701 --> 00:03:26,043
+Then it fills in a test user with an example address and expects the welcome message.
+
+41
+00:03:26,373 --> 00:03:33,069
+Screenshots, a Playwright trace, console errors and failed network calls are all saved as evidence.
+
+42
+00:03:34,213 --> 00:03:36,338
+Step five is the load test.
+
+43
+00:03:36,338 --> 00:03:44,725
+The smoke profile sent forty four requests, with a p95 of about sixty seven milliseconds and zero errors.
+
+44
+00:03:45,055 --> 00:03:47,755
+Ramp, soak and spike profiles are there too,
+
+45
+00:03:47,755 --> 00:03:52,663
+and anything that looks like production is refused unless the owner allows it.
+
+46
+00:03:53,793 --> 00:04:00,695
+The live regression recorder replays your regression list as a real user, read-only on staging or live.
+
+47
+00:04:00,695 --> 00:04:04,233
+Here is the narrated video the kit produced itself.
+
+48
+00:04:04,513 --> 00:04:09,923
+We open the local demo shop's sign-up page. Everything here is fake test data.
+
+49
+00:04:10,106 --> 00:04:14,076
+First, a negative case: we submit the form empty.
+
+50
+00:04:14,712 --> 00:04:18,250
+The form refuses an empty name and says why.
+
+51
+00:04:18,908 --> 00:04:22,902
+Now we fill in a test user with a fake example address.
+
+52
+00:04:23,135 --> 00:04:27,513
+The account is created and the welcome message greets the test user.
+
+53
+00:04:35,663 --> 00:04:41,163
+Now a failure. A second plan expects a returning user to see: welcome back.
+
+54
+00:04:41,163 --> 00:04:46,271
+Both passes fail, so the loop pauses and asks for verify and refute.
+
+55
+00:04:47,401 --> 00:04:50,502
+The refuter is the second agent of a two-agent bar.
+
+56
+00:04:50,502 --> 00:04:54,697
+It works on its own path and tries hard to prove the failure wrong.
+
+57
+00:04:55,027 --> 00:05:00,997
+Its verdict: refuted. Neither the app nor the original plan ever promised welcome back.
+
+58
+00:05:00,997 --> 00:05:04,411
+The test expectation was wrong, not the product.
+
+59
+00:05:04,741 --> 00:05:08,325
+So no bug is filed, and the ledger shows zero open bugs.
+
+60
+00:05:08,325 --> 00:05:12,349
+That is how ShipShape keeps false alarms out of your tracker.
+
+61
+00:05:13,479 --> 00:05:21,567
+Step six writes one self-contained HTML report. It opens offline, so you can attach it anywhere.
+
+62
+00:05:21,897 --> 00:05:27,115
+At the top, the verdict and the counts: four pass, zero fail, one blocked.
+
+63
+00:05:27,115 --> 00:05:32,313
+Then every case with its evidence, and the videos you can play in place.
+
+64
+00:05:32,643 --> 00:05:33,581
+Further down:
+
+65
+00:05:33,581 --> 00:05:40,294
+console and network checks, the load chart, bugs that survived the refuter, open human gates,
+
+66
+00:05:40,294 --> 00:05:42,291
+and the trend across runs.
+
+67
+00:05:42,621 --> 00:05:47,973
+There is also a spoken summary, so a non-technical owner can just listen to the result.
+
+68
+00:05:49,112 --> 00:05:56,768
+Step seven is delivery to Telegram, WhatsApp, Slack, email or a webhook, whatever your config lists.
+
+69
+00:05:57,098 --> 00:06:01,638
+First a privacy scan of everything that would leave: zero findings.
+
+70
+00:06:01,638 --> 00:06:07,178
+Then a dry run that prints exactly what would be sent, with the tokens left out.
+
+71
+00:06:07,508 --> 00:06:13,868
+Nothing leaves the machine until the owner says send, and a channel that is not in the config is refused.
+
+72
+00:06:15,012 --> 00:06:21,252
+The guard rails are not just advice. The plugin ships hooks that Claude Code runs before risky tools,
+
+73
+00:06:21,252 --> 00:06:24,276
+and most of them are written in plain language.
+
+74
+00:06:24,606 --> 00:06:30,606
+For example: block a git push that force-pushes, or pushes to main or production.
+
+75
+00:06:31,745 --> 00:06:37,158
+Here we asked Claude, with the plugin loaded, to force-push to main in a throwaway repo.
+
+76
+00:06:37,158 --> 00:06:40,169
+The hook blocked it before git was even called.
+
+77
+00:06:40,499 --> 00:06:43,721
+A second, deterministic hook scans every commit.
+
+78
+00:06:43,721 --> 00:06:50,634
+A fake bot token was staged by mistake, so the commit is blocked, and only the kind and line are shown,
+
+79
+00:06:50,634 --> 00:06:51,827
+never the value.
+
+80
+00:06:52,957 --> 00:06:58,545
+Some flows live outside the browser: native apps, file pickers, OS dialogs.
+
+81
+00:06:58,545 --> 00:07:03,061
+ShipShape can drive the desktop too, but only behind gates.
+
+82
+00:07:03,391 --> 00:07:08,174
+With desktop control off in the config, the first step is refused.
+
+83
+00:07:08,174 --> 00:07:14,743
+Turned on, only allow-listed apps run, and the delete step stops and asks the user first.
+
+84
+00:07:15,073 --> 00:07:20,628
+Banking, payment and password apps are always refused, and every action is logged.
+
+85
+00:07:20,628 --> 00:07:24,745
+These are dry runs, so nothing on this desktop was touched.
+
+86
+00:07:25,891 --> 00:07:32,777
+The kit is not only QA. /timesheet measures real working hours from Claude Code session logs,
+
+87
+00:07:32,777 --> 00:07:36,451
+merging sub-agents so parallel work counts once.
+
+88
+00:07:36,781 --> 00:07:43,803
+Idle gaps are cut, blocks are mapped to tasks, and you get an Excel sheet plus Odoo import rows.
+
+89
+00:07:43,803 --> 00:07:46,045
+This run uses synthetic logs.
+
+90
+00:07:46,375 --> 00:07:51,559
+It never writes to Odoo by itself. A human reviews the file first.
+
+91
+00:07:52,691 --> 00:07:59,795
+/odoo-check runs pre-deploy checks on an Odoo module. This fake loyalty module has four problems.
+
+92
+00:08:00,125 --> 00:08:06,968
+A cron outside a no-update block, no neutralize script, a raw commit inside a model, and no tests.
+
+93
+00:08:06,968 --> 00:08:10,301
+Each one is a classic way to break production.
+
+94
+00:08:10,631 --> 00:08:15,071
+The Odoo expert agent then explains each fix before the deploy.
+
+95
+00:08:16,201 --> 00:08:21,361
+When you get stuck, run the doctor first. It prints the fix for anything missing.
+
+96
+00:08:21,691 --> 00:08:28,051
+The README and the docs folder cover every command, and you can simply ask Claude how to use any of them.
+
+97
+00:08:28,381 --> 00:08:34,861
+For questions or bugs, open an issue on the repository. Thanks for watching, and happy shipping.
+

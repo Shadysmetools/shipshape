@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Shop (local, fake data)</title>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --ink:#1d2733; --muted:#5b6675; --accent:#3b5bdb; }
+  body { margin:0; font:16px/1.5 system-ui, "Segoe UI", Arial, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:520px; margin:48px auto; padding:0 16px; }
+  .card { background:var(--card); border-radius:12px; padding:28px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+  h1 { margin:0 0 6px; font-size:26px; } p.sub { margin:0 0 20px; color:var(--muted); }
+  label { display:block; font-weight:600; margin:14px 0 6px; }
+  input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #c9d1dc; border-radius:8px; font-size:16px; }
+  button { margin-top:20px; padding:11px 18px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-size:16px; cursor:pointer; }
+  .err { color:#a12a2a; margin-top:10px; min-height:1.5em; }
+  #welcome { display:none; } .pay { background:#7a7a7a; }
+  footer { margin-top:18px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card" id="signup">
+    <h1>Create your account</h1>
+    <p class="sub">Local demo page for the agent kit. Everything here is fake.</p>
+    <form id="form" novalidate>
+      <label for="name">Full name</label>
+      <input id="name" name="name" autocomplete="off">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="off">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="off">
+      <button type="submit" id="create">Create account</button>
+      <div class="err" id="error" role="alert"></div>
+    </form>
+  </div>
+  <div class="card" id="welcome">
+    <h1 id="hello">Welcome</h1>
+    <p class="sub">Your account is ready. We sent a confirmation to <span id="shown-email"></span>.</p>
+    <button class="pay" id="pay">Pay now</button>
+  </div>
+  <footer>Support: help@example.com (fake)</footer>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  $('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('name').value.trim(), email = $('email').value.trim(), pw = $('password').value;
+    if (!name) return ($('error').textContent = 'Please enter your name.');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return ($('error').textContent = 'Please enter a valid email.');
+    if (pw.length < 8) return ($('error').textContent = 'Password must be at least 8 characters.');
+    $('error').textContent = '';
+    $('signup').style.display = 'none';
+    $('welcome').style.display = 'block';
+    $('hello').textContent = 'Welcome, ' + name;
+    $('shown-email').textContent = email;
+  });
+</script>
+</body>
+</html>

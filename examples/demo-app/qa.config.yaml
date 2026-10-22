@@ -1,0 +1,16 @@
+# Example project config for the local demo app (fake data). Delivery is dry-run unless --send.
+project: demo-shop
+base_url: http://127.0.0.1:8765/
+allow_hosts: [127.0.0.1, localhost]
+live: false
+narrator: {provider: edge, lang: en}
+loop: {max_rounds: 3, budget_minutes: 30, passes: 2}
+notify:
+  telegram:
+    enabled: true
+    token: {env: TELEGRAM_BOT_TOKEN}
+    chat_id: "<TELEGRAM_CHAT_ID>"
+    lang: en
+  slack:
+    enabled: true
+    webhook_url: {env: SLACK_WEBHOOK_URL}

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# qa: the one command. Usage: qa demo | qa "<goal>" --plan p.json [...]   (alias of bin/run-qa.sh)
+exec bash "$(cd "$(dirname "$0")" && pwd)/run-qa.sh" "$@"

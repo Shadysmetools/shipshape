@@ -1,0 +1,44 @@
+1
+00:00:00,550 --> 00:00:05,542
+Meet ShipShape: an autonomous QA crew that lives in Claude Code.
+
+2
+00:00:06,683 --> 00:00:07,787
+Give it a goal.
+
+3
+00:00:07,787 --> 00:00:14,531
+It reviews your code and security, then runs every test twice in a real browser, on video.
+
+4
+00:00:15,661 --> 00:00:20,821
+A refuter attacks every failure, so false alarms never become bugs.
+
+5
+00:00:21,151 --> 00:00:25,807
+Here it proved the test expected the wrong text, so no bug was filed.
+
+6
+00:00:26,937 --> 00:00:31,406
+You get one offline report with load results, evidence and trends,
+
+7
+00:00:31,406 --> 00:00:35,385
+delivered to Telegram or WhatsApp only when you say send.
+
+8
+00:00:36,515 --> 00:00:41,195
+Plain-language hooks block unsafe moves, like a force push to main.
+
+9
+00:00:42,325 --> 00:00:47,189
+Plus gated desktop control, real timesheets from your Claude Code logs,
+
+10
+00:00:47,189 --> 00:00:49,981
+and pre-deploy checks for Odoo modules.
+
+11
+00:00:51,125 --> 00:00:58,205
+Install it in two commands, and watch the full ten minute tutorial to go from zero to self-testing.
+

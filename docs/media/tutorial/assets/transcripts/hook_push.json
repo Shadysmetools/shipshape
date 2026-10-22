@@ -1,0 +1,12 @@
+[
+ {
+  "cmd": "git push --force origin main",
+  "out": "PreToolUse:Bash hook error: [Guard for git push ...]\nBlocked: the command 'git push --force origin main' force-pushes to main, which is a force push and targets a protected branch.",
+  "prompt": "claude"
+ },
+ {
+  "cmd": "",
+  "out": "The force-push didn't run because a PreToolUse hook blocked it before Git was called, so nothing was pushed. The hook guards against force-pushes and against pushes to protected branches like `main`, and this command was both.",
+  "prompt": "claude-says"
+ }
+]

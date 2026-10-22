@@ -1,0 +1,20 @@
+{
+  "name": "demo-signup",
+  "base_url": "http://127.0.0.1:8765/",
+  "allow_hosts": ["127.0.0.1", "localhost"],
+  "live": false,
+  "allow_input": false,
+  "viewport": [1280, 720],
+  "steps": [
+    {"do": "goto", "url": "index.html", "say": "We open the local demo shop's sign-up page. Everything here is fake test data."},
+    {"do": "click", "selector": "#create", "say": "First, a negative case: we submit the form empty."},
+    {"do": "expect_text", "text": "Please enter your name.", "case": "TC-01", "say": "The form refuses an empty name and says why."},
+    {"do": "fill", "selector": "#name", "value": "Test User"},
+    {"do": "fill", "selector": "#email", "value": "test.user@example.com"},
+    {"do": "fill", "selector": "#password", "value": "test-only-pass-123", "say": "Now we fill in a test user with a fake example address."},
+    {"do": "click", "selector": "#create"},
+    {"do": "expect_text", "text": "Welcome, Test User", "case": "TC-02", "say": "The account is created and the welcome message greets the test user."},
+    {"do": "screenshot", "name": "welcome"},
+    {"do": "click", "selector": "#pay", "case": "TC-03", "say": "The next button is Pay now. The kit never pays, so the run stops here."}
+  ]
+}

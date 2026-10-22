@@ -1,0 +1,5 @@
+---
+description: Measure real working hours from Claude Code session logs + git commits for a project and produce an Excel timesheet and Odoo import rows, with self-checks. Never writes to Odoo without an explicit OK.
+argument-hint: "<project or folder> [since YYYY-MM-DD] [until YYYY-MM-DD]"
+---
+Delegate to the `timesheet-agent` agent with: $ARGUMENTS. Core command: `python ${CLAUDE_PLUGIN_ROOT}/scripts/timesheet.py --project-dir <~/.claude/projects/...> --tasks tasks.json --gap 20 --tz <+HH:MM> --out <file>.xlsx`. Start from `${CLAUDE_PLUGIN_ROOT}/templates/tasks.example.json`.
