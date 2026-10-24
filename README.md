@@ -10,10 +10,10 @@ It also ships a **timesheet agent**, which measures real working hours from Clau
 ## 🎬 Tutorial: *ShipShape — From Zero to Self-Testing in 10 Minutes*
 
 <p align="center">
-  <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-tutorial.mp4">
+  <a href="https://github.com/Shadysmetools/shipshape/releases/latest/download/shipshape-tutorial.mp4">
     <img src="docs/media/readme/tutorial-thumbnail.png" width="720" alt="Click to watch the ShipShape tutorial (10 min)">
   </a><br>
-  <b>▶ Click the picture to watch the full tutorial (8½ min, MP4)</b> · <a href="https://github.com/Shadysmetools/shipshape/releases/download/v0.1.0/shipshape-teaser.mp4">60-second teaser</a> · <a href="https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0">all videos</a>
+  <b>▶ Click the picture to watch the full tutorial (8½ min, MP4)</b> · <a href="https://github.com/Shadysmetools/shipshape/releases/latest/download/shipshape-teaser.mp4">60-second teaser</a> · <a href="https://github.com/Shadysmetools/shipshape/releases/tag/v0.1.0">all videos</a>
 </p>
 
 <p align="center"><img src="docs/media/readme/shipshape-preview.gif" width="720" alt="ShipShape teaser preview"></p>
