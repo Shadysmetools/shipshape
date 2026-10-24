@@ -154,13 +154,15 @@ def test_dl05_one_sender_per_channel(tmp_path, monkeypatch):
     assert notify.store_path({"SMEKIT_STATE_DIR": str(tmp_path / "s")}).endswith("delivery-sent.json")
 
 
-# SEC-01: secrets are never read or printed
-def test_sec01_secret_read_hooks():
+# SEC-01: secrets are never read or printed (deterministic guard on Bash, PowerShell and Read)
+def test_sec01_secret_read_guard():
+    import hook_guard
+    for cmd in ("cat .env", "type .env.local", "Get-Content secrets/bots.json", "less ~/.ssh/id_rsa", "cat C:/x/token.json"):
+        assert hook_guard.classify_command(cmd, os.getcwd())[0] == "deny", cmd
+    assert hook_guard.classify_read("/home/x/proj/.env")[0] == "deny"
+    assert hook_guard.classify_command("cat .env.example", os.getcwd()) is None
     pre = hooks()["PreToolUse"]
-    ifs = [h.get("if", "") for m in pre for h in m["hooks"]]
-    for rule in ("Read(**/.env*)", "Read(**/secrets/**)", "Bash(cat *)", "Bash(Get-Content *)"):
-        assert rule in ifs
-    assert any(h.get("if") == "Read(**/.env*)" and "environment variables" in h["prompt"] for m in pre for h in m["hooks"])
+    assert any(m["matcher"] == "Bash|PowerShell|Read" and m["hooks"][0]["type"] == "command" for m in pre)
 
 
 # SEC-05: no input on checkout/payment pages or live client hosts
@@ -211,9 +213,10 @@ def test_win02_bom_and_zero_width(tmp_path):
 
 # CO-01: only the owner's own words count as approval (merges, deletes, writes, sends)
 def test_co01_owner_words_only():
+    import hook_guard
+    for cmd in ("git merge feat", "gh pr merge 7", "rm -rf src", "git branch -D x", "git push origin --delete x"):
+        v = hook_guard.classify_command(cmd, os.getcwd())
+        assert v and v[0] == "ask", cmd  # a real permission prompt: nothing relayed can click it
     pre = hooks()["PreToolUse"]
-    agent_ifs = {h.get("if") for m in pre for h in m["hooks"] if h["type"] == "agent"}
-    for rule in ("Bash(git merge*)", "Bash(gh pr merge*)", "Bash(rm -rf*)"):
-        assert rule in agent_ifs
     prompts = " ".join(h["prompt"] for m in pre for h in m["hooks"] if h["type"] == "agent")
-    assert prompts.count("relayed") >= 3
+    assert prompts.count("relayed") >= 2  # Odoo writes and outward sends still check the conversation

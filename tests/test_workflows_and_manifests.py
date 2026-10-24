@@ -53,7 +53,7 @@ def test_plugin_and_marketplace_manifests():
     plugin = json.load(open(os.path.join(ROOT, ".claude-plugin", "plugin.json")))
     market = json.load(open(os.path.join(ROOT, ".claude-plugin", "marketplace.json")))
     assert plugin["name"] == market["plugins"][0]["name"] == "smetools-agent-kit"
-    assert market["plugins"][0]["source"] == "./"
+    assert market["plugins"][0]["source"] == "."
 
 
 def test_mcp_servers_are_pinned_and_secret_free():
@@ -67,7 +67,7 @@ def test_hooks_are_well_formed():
     hooks = json.load(open(os.path.join(ROOT, "hooks", "hooks.json")))["hooks"]
     assert set(hooks) == {"SessionStart", "Stop", "PreToolUse"}
     types = [h["type"] for group in hooks.values() for m in group for h in m["hooks"]]
-    assert types.count("prompt") >= 3 and types.count("agent") >= 3
+    assert types.count("prompt") >= 2 and types.count("agent") >= 2 and types.count("command") >= 2
     for group in hooks.values():
         for m in group:
             for h in m["hooks"]:
@@ -111,27 +111,20 @@ def test_frontmatter(kind):
             assert os.path.exists(os.path.join(ROOT, ref)), f"{f} -> {ref}"
 
 
-def _commit_hook_command():
+def _guard_hook_command():
     pre = json.load(open(os.path.join(ROOT, "hooks", "hooks.json")))["hooks"]["PreToolUse"]
-    return [h["command"] for m in pre if m["matcher"] == "Bash" for h in m["hooks"] if h["type"] == "command"][0]
+    return [h["command"] for m in pre if m["matcher"] == "Bash|PowerShell|Read" for h in m["hooks"] if h["type"] == "command"][0]
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not installed")
-def test_commit_hook_command_from_hooks_json_blocks(tmp_path):
-    """Runs the literal hooks.json command (not just the script): it must exit 2 on a staged secret,
-    and must not fall through to a second interpreter that would turn the block into a pass."""
+def test_guard_hook_command_from_hooks_json_blocks(tmp_path):
+    """Runs the literal hooks.json command (not just the script): a staged secret must come back as a
+    deny decision, and the command must not fall through to a second interpreter."""
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / "a.py").write_text('TOKEN = "ghp_' + "D" * 36 + '"\n')
     subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
-    cmd = _commit_hook_command().replace("${CLAUDE_PLUGIN_ROOT}", ROOT.replace("\\", "/"))
-    payload = json.dumps({"tool_input": {"command": "git commit -m x"}, "cwd": str(tmp_path)})
+    cmd = _guard_hook_command().replace("${CLAUDE_PLUGIN_ROOT}", ROOT.replace("\\", "/"))
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "git commit -m x"}, "cwd": str(tmp_path)})
     p = subprocess.run(["bash", "-c", cmd], input=payload, capture_output=True, text=True, timeout=60)
-    assert p.returncode == 2, (p.returncode, p.stderr[-300:])
-
-
-def test_powershell_guards_mirror_bash():
-    pre = json.load(open(os.path.join(ROOT, "hooks", "hooks.json")))["hooks"]["PreToolUse"]
-    groups = {m["matcher"]: m["hooks"] for m in pre}
-    bash_ifs = [h.get("if", "").replace("Bash(", "") for h in groups["Bash"]]
-    ps_ifs = [h.get("if", "").replace("PowerShell(", "") for h in groups["PowerShell"]]
-    assert bash_ifs == ps_ifs and len(ps_ifs) >= 10
+    assert p.returncode == 0, p.stderr[-300:]
+    assert json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"

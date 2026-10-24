@@ -109,6 +109,10 @@ def build(run_dir, root=None, embed_video=False):
         for run in rnd["runs"]:
             d = os.path.join(run_dir, run["dir"])
             parts.append(f"<section><h2>Video: {E(os.path.basename(run['plan']))}</h2>")
+            narr = run.get("narration") or []
+            if narr:
+                badges = " · ".join(f"pass {i + 1}: {E(n if n == 'voice' else 'no voice (' + str(n) + ')')}" for i, n in enumerate(narr))
+                parts.append(f'<p class="muted">Narration: {badges}</p>')
             vid = run.get("video")
             vpath = os.path.join(d, vid) if vid else None
             if vpath and os.path.exists(vpath) and vpath.endswith(".mp4"):

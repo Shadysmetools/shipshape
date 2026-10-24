@@ -71,6 +71,14 @@ def main(argv=None):
     sys.stdout.reconfigure(encoding="utf-8")
 
     print("ShipShape - your autonomous QA crew | goal:", a.goal)
+    sys.path.insert(0, HERE)
+    import record
+    for pth in a.plan:
+        try:
+            record.apply_target(record.load_plan(pth), a.url, a.allow_host)
+        except record.PlanError as exc:
+            print(f"ERROR: {exc}")
+            return 2
     step("1/7 history: what earlier runs say")
     h = qa_history.history(qa_history.load_runs(a.root))
     if h["trend"]:
@@ -81,7 +89,10 @@ def main(argv=None):
 
     step("2/7 start or resume the ledger")
     qa_loop.main(["start", "--root", a.root, "--goal", a.goal, "--max-rounds", str(a.max_rounds),
+                  *(["--url", a.url] if a.url else []), *sum((["--allow-host", x] for x in a.allow_host), []),
                   *sum((["--plan", p] for p in a.plan), [])])
+    if a.url:
+        print(f"target: {a.url} (overrides the plans' base_url)")
     import datetime as dt
     run = os.path.join(a.root, f"{dt.date.today().isoformat()}-{qa_loop.slug(a.goal)}")
 

@@ -56,7 +56,7 @@ def check():
         add("playwright chromium", "OK" if rc == 0 else "FAIL", "launches" if rc == 0 else out[-160:], "python -m playwright install chromium")
     for pkg in MCP:
         if shutil.which("npm"):
-            rc, out = run(["npm", "view", pkg, "version"], 60) if os.name != "nt" else run(["cmd", "/c", "npm", "view", pkg, "version"], 60)
+            rc, out = run(["npm", "view", pkg, "version"], 15) if os.name != "nt" else run(["cmd", "/c", "npm", "view", pkg, "version"], 15)
             add(f"mcp:{pkg}", "OK" if rc == 0 and out else "WARN", out or "not resolvable (offline?)", "Check network; npx downloads it on first use")
     for tool, why, fix in (("k6", "heavier load tests", "winget install k6 / brew install k6"), ("gitleaks", "secret scanning", "winget install gitleaks / brew install gitleaks"),
                            ("osv-scanner", "dependency audit", "go install github.com/google/osv-scanner/cmd/osv-scanner@v1")):

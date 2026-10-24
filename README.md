@@ -70,9 +70,9 @@ Two layers do the work:
 - **Scripts** (`scripts/*.py`) are deterministic and tested. They record, count, enforce guards and timeouts, and keep the ledger.
 - **Agents, skills, commands and workflows** supply the judgement: what to test, is this failure real, what to file. They call the scripts.
 
-## Install (about 5 minutes)
+## Install (about 20 minutes on a first install, mostly the Chromium download; about 5 minutes when Playwright and Chromium are already on the machine)
 
-Requirements: [Claude Code](https://code.claude.com), Python 3.10+, Node.js 20+, ffmpeg. The installer handles everything else.
+Requirements: [Claude Code](https://code.claude.com), Python 3.10+, Node.js 20+, ffmpeg. The installer handles everything else: Python packages, Chromium (about 150 MB), the pinned MCP servers. Firefox and WebKit are optional (`--with-browsers` / `-WithBrowsers`, about 250 MB more).
 
 ```bash
 git clone https://github.com/Shadysmetools/shipshape.git && cd shipshape
@@ -86,11 +86,12 @@ Then, inside Claude Code:
 /plugin marketplace add Shadysmetools/shipshape
 /plugin install smetools-agent-kit@shipshape
 ```
+Two names, on purpose: **`shipshape`** is the GitHub repo and the marketplace you add; **`smetools-agent-kit`** is the plugin id inside it (the one you install, and the prefix of its skills: `smetools-agent-kit:qa-goal-loop`).
 You can also add the marketplace from a local folder: `/plugin marketplace add /path/to/shipshape`.
 
 Installing the plugin wires up the agents, skills, slash commands and hooks. It also adds two MCP servers: **Playwright MCP** (`@playwright/mcp@0.0.83`, video/tracing enabled, isolated profile) and **Chrome DevTools MCP** (`chrome-devtools-mcp@1.10.1`). No keys are needed for either.
 
-## First run (about 2 minutes, no account needed)
+## First run (about 6 minutes, no account needed)
 
 ```bash
 bash bin/run-qa.sh demo            # Windows: powershell -File bin\run-qa.ps1 demo   (or: bin\qa.cmd demo)
@@ -155,7 +156,7 @@ Read more in `docs/OPERATING-RULES.md`, `docs/HOOKS-IN-PLAIN-LANGUAGE.md` and `d
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **100 pass / 0 fail / 1 skipped** (101 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **137 pass / 0 fail / 1 skipped** (138 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
@@ -171,7 +172,8 @@ The suite covers:
 - dry-runs of all three workflows with mocked agents;
 - a real Playwright recording smoke test against the local page (external requests blocked);
 - an end-to-end `full_qa.py` run on the example app;
-- one acceptance test per P0 lesson in `docs/LESSONS-TO-BEHAVIOUR.md` (`tests/test_lessons_p0.py`).
+- one acceptance test per P0 lesson in `docs/LESSONS-TO-BEHAVIOUR.md` (`tests/test_lessons_p0.py`);
+- one regression test per fix from the 0.1.0 evaluation (`tests/test_eval_fixes.py`): `--url` beats the plan's URL and a dead target fails, one-line config and plan errors, narration surfaced on both passes, the offline narrator, the pinned installer, the deterministic hook guard (deny/ask), the demo wrapper.
 
 ## Verified vs not verified
 

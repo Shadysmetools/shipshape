@@ -843,7 +843,7 @@ def build_video(scenes, name, chapters=True, crf=27, label="tutorial"):
         "-metadata:s:s:1", "language=ara", "-metadata:s:s:1", "title=Arabic", "-movflags", "+faststart", out], timeout=7200)
     size = os.path.getsize(out) / 1e6
     print(f"{out}: {dur(out):.1f}s, {size:.1f} MB, {len(chaps)} chapters")
-    json.dump({"file": out, "seconds": dur(out), "mb": round(size, 1), "chapters": [(round(a, 2), t) for a, t in chaps],
+    json.dump({"file": os.path.relpath(out, HERE).replace(os.sep, "/"), "seconds": dur(out), "mb": round(size, 1), "chapters": [(round(a, 2), t) for a, t in chaps],
                "scenes": [{"id": s["id"], "kind": r["kind"], "start": round(r["start"], 2), "dur": round(r["dur"], 2), "mock": bool(r["missing"]),
                            "tag": "MOCK" if r["missing"] else s.get("tag", "")} for s, r in zip(scenes, results)]},
               open(base + ".manifest.json", "w", encoding="utf-8"), indent=1)

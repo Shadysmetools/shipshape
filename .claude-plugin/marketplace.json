@@ -9,9 +9,9 @@
   "plugins": [
     {
       "name": "smetools-agent-kit",
-      "source": "./",
+      "source": ".",
       "description": "ShipShape: your autonomous QA crew - goal-driven QA with narrated video evidence, timesheets from Claude Code logs, and an Odoo expert.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "SMEtools"
       },

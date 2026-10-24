@@ -116,13 +116,27 @@ def srt(entries, path):
 
 
 def narrate_lines(lines, out_mp3, lang="en", gap=0.4):
-    """Speak lines back to back into one mp3 + srt. Returns the srt entries."""
-    clips, t, entries = [], 0.0, []
+    """Speak lines back to back into one mp3 + srt. Returns the srt entries.
+    If no voice can be made (offline, provider down) the .srt is still written,
+    one warning is printed and the entries come back with estimated timings."""
+    clips, t, entries, missed = [], 0.0, [], 0
     for line in lines:
-        p, d = say(line, lang)
+        try:
+            p, d = say(line, lang)
+        except (RuntimeError, OSError) as exc:
+            missed += 1
+            d = max(2.0, 0.4 * len(line.split()))  # a reading-speed estimate keeps the captions usable
+            if missed == 1:
+                print(f"[narrator] no voice: {str(exc).splitlines()[0][:120]}; writing captions only")
+            entries.append((t, t + d, line))
+            t += d + gap
+            continue
         clips.append(p)
         entries.append((t, t + d, line))
         t += d + gap
+    if missed:
+        srt(entries, os.path.splitext(out_mp3)[0] + ".srt")
+        return entries
     lst = out_mp3 + ".txt"
     with open(lst, "w", encoding="utf-8") as fh:
         fh.write("\n".join(f"file '{os.path.abspath(c).replace(os.sep, '/')}'" for c in clips))
@@ -171,9 +185,15 @@ def main(argv=None):
         print(json.dumps({"provider": provider(), "voices": VOICES}, ensure_ascii=False, indent=1))
         return 0
     if a.cmd == "report":
+        if not os.path.isdir(a.target or ""):
+            print(f"ERROR: run folder not found: {a.target}")
+            return 2
         out = a.out or os.path.join(a.target, f"summary-{a.lang}.mp3")
         entries = narrate_lines(report_lines(a.target, a.lang), out, a.lang)
-        print(f"wrote {out} ({entries[-1][1]:.1f}s) and {os.path.splitext(out)[0]}.srt")
+        if os.path.exists(out):
+            print(f"wrote {out} ({entries[-1][1]:.1f}s) and {os.path.splitext(out)[0]}.srt")
+        else:
+            print(f"wrote {os.path.splitext(out)[0]}.srt only (no voice available this time)")
         return 0
     lines = json.load(open(a.lines, encoding="utf-8"))
     clips = [(x["t"], say(x["text"], a.lang)[0]) for x in lines]

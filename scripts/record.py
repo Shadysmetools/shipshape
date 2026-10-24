@@ -115,6 +115,43 @@ def srt_time(sec):
     return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
 
 
+class PlanError(Exception):
+    """A plan file that cannot be used; the message is a single readable line."""
+
+
+def load_plan(path):
+    """Read a plan JSON file; raise PlanError with the path (and line) on any problem."""
+    try:
+        with open(path, encoding="utf-8-sig") as fh:
+            plan = json.load(fh)
+    except FileNotFoundError:
+        raise PlanError(f"plan file not found: {path}") from None
+    except json.JSONDecodeError as exc:
+        raise PlanError(f"plan file is not valid JSON: {path} (line {exc.lineno}, column {exc.colno}: {exc.msg})") from None
+    except OSError as exc:
+        raise PlanError(f"plan file unreadable: {path} ({exc.strerror})") from None
+    if not isinstance(plan, dict) or not isinstance(plan.get("steps"), list) or not plan["steps"]:
+        raise PlanError(f"plan file needs an object with a non-empty 'steps' list: {path}")
+    return plan
+
+
+def apply_target(plan, base_url=None, allow_hosts=None):
+    """The command line wins over the plan: --base-url replaces plan.base_url and
+    --allow-host replaces plan.allow_hosts. Says so when they differ, so a run can
+    never silently test a different target than the one asked for."""
+    plan = dict(plan)
+    notes = []
+    if base_url:
+        old = (plan.get("base_url") or "").rstrip("/")
+        if old and old != base_url.rstrip("/"):
+            notes.append(f"base_url override: plan says {old}, running against {base_url.rstrip('/')}")
+        plan["base_url"] = base_url
+    if allow_hosts:
+        plan["allow_hosts"] = list(allow_hosts)
+    plan["_target_notes"] = notes
+    return plan
+
+
 def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_timeout=900, step_timeout=15):
     from playwright.sync_api import sync_playwright
 
@@ -126,15 +163,26 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
     w, h = plan.get("viewport", [1280, 720])
 
     clips = {}
+    narration_note = None
     if narrate:  # synthesize first: no pauses in the recording, and a failed voice never blocks the test
         import tts
+        missed = []
         for s in plan["steps"]:
             if s.get("say"):
                 try:
                     p, d, _ = tts.speak(s["say"])
                     clips[s["say"]] = (p, d)
                 except RuntimeError as exc:
-                    print(f"[record] narration skipped for one line: {exc}")
+                    missed.append(str(exc).splitlines()[0][:120])
+        if missed:
+            narration_note = f"{len(missed)} narration line(s) not synthesized (no voice for them): {missed[0]}"
+            print("[record]", narration_note)
+        elif not clips:
+            narration_note = "no 'say' lines in the plan, so there is no voice"
+    else:
+        narration_note = "narration off (--narrate not given)"
+    for n in plan.get("_target_notes", []):
+        print("[record]", n)
 
     results, blocked, captions, shots = [], [], [], []
     t_start = time.time()
@@ -277,7 +325,8 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
         subprocess.run(args, check=True, timeout=600)
     summary = {"name": plan.get("name"), "summary": report.summary(counts), "counts": counts, "stopped": stop,
                "blocked_hosts": sorted(set(b for b in blocked if b)), "video": os.path.basename(mp4) if mp4 else (raw and os.path.relpath(raw, out)),
-               "trace": "trace.zip", "captions": "captions.srt", "narrated": bool(clips), "screenshots": [os.path.basename(x) for x in shots],
+               "trace": "trace.zip", "captions": "captions.srt", "narrated": bool(clips), "narration_note": narration_note,
+               "base_url": base, "target_notes": plan.get("_target_notes", []), "screenshots": [os.path.basename(x) for x in shots],
                "console": console, "network": network, "results": rows, "elapsed_sec": round(time.time() - t_start, 1),
                "browser": browser_name, "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
                "head_start": head_start, "head_end": git_head(plan.get("repo"))}
@@ -298,8 +347,14 @@ def main(argv=None):
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--total-timeout", type=int, default=900)
     ap.add_argument("--step-timeout", type=int, default=15)
+    ap.add_argument("--base-url", help="overrides the plan's base_url (the target you name wins)")
+    ap.add_argument("--allow-host", action="append", default=[], help="overrides the plan's allow_hosts (repeatable)")
     a = ap.parse_args(argv)
-    plan = json.load(open(a.plan, encoding="utf-8"))
+    try:
+        plan = apply_target(load_plan(a.plan), a.base_url, a.allow_host)
+    except PlanError as exc:
+        print(f"ERROR: {exc}")
+        return 2
     s = run(plan, a.out, a.narrate, a.browser, a.headed, a.total_timeout, a.step_timeout)
     print(s["summary"], "| stopped:", s["stopped"] or "no", "| blocked hosts:", s["blocked_hosts"] or "none",
           "| video:", s["video"])

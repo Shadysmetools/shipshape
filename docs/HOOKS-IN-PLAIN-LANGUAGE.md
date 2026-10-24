@@ -22,17 +22,18 @@ Reference (Claude Code docs): hooks and prompt/agent hook types: https://code.cl
 6. **Test it**: run `claude --debug` and trigger the action; or `claude plugin validate .` for the JSON.
 
 ## ShipShape's hooks (in `hooks/hooks.json`)
+Six handlers, each distinct. Model-judged hooks are used only where judgement is needed; everything that can be decided by a script is decided by a script (no model call, no latency, testable).
+
 | When | Type | The rule, in words |
 |---|---|---|
 | Session start | command | Print "ShipShape ready" and the commands. No network. |
 | Claude wants to stop | prompt | If the last message reports test results, it must say "N pass / M fail" with evidence paths, and never just "all green". |
+| Before any Bash, PowerShell or Read call | command (`scripts/hook_guard.py`) | **Deny**: reading or printing secret files (`.env`, `secrets/`, `*.pem`, `*.key`, `~/.ssh`, credential stores), commands carrying a literal key, force-pushes, pushes to main/master/production, commits whose staged diff adds secrets or personal data. **Ask the user** (a real permission prompt, so only the owner's own click counts): merges, branch/remote/file deletes outside tmp and run folders, `notify.py --send` (after checking the channels are listed and enabled in `qa.config.yaml`), `desktop.py run` (after the desktop gates). Everything else passes in a few milliseconds. |
 | Before an Odoo write tool | agent | Allow only if the user approved this specific write in this conversation; a relayed approval does not count. |
 | Before an upload/share/send/post tool | agent | Block names, emails, phones, keys, client data, and sends the user did not ask for; security findings only as a count. |
-| Before `git commit` | command | Scan the staged diff for secrets and personal data (a model cannot see the staged diff). |
-| Before `git push` | prompt | Block force-pushes and pushes to main/master/production. |
-| Before `notify.py --send` | agent | Only channels listed and enabled in qa.config.yaml, and only after the user said send. |
-| Before `desktop.py run` | agent | Desktop enabled, apps on the allow-list, no banking/payment/password apps or fields, irreversible steps approved. |
 | Before computer-use actions | prompt | No password fields, no banking/payment apps, no irreversible action without approval. |
+
+Why "ask" instead of a model reading the transcript: a PreToolUse command hook can answer `permissionDecision: "ask"`, which routes the call to the user's own permission prompt. That is the strictest form of "the owner's own words": nothing another agent says can click it. In headless runs an "ask" is a deny, which is the right default for merges and real sends.
 
 ### Example: the Stop rule
 ```json
@@ -40,11 +41,12 @@ Reference (Claude Code docs): hooks and prompt/agent hook types: https://code.cl
  "prompt": "You check how Claude reports test or QA results. Hook input: $ARGUMENTS\nIf stop_hook_active is true, answer {\"ok\": true}. ... If the rule is broken, answer {\"ok\": false, \"reason\": \"Report the results as N pass / M fail with the evidence paths, and say what was not checked.\"}. Otherwise answer {\"ok\": true}."}
 ```
 
-### Example: block pushes to production
+### Example: a plain-language push guard (if you prefer a model over the script)
 ```json
-{"matcher": "Bash", "hooks": [{"type": "prompt", "if": "Bash(git push*)", "continueOnBlock": true,
+{"matcher": "Bash|PowerShell", "hooks": [{"type": "prompt", "if": "Bash(git push*)", "continueOnBlock": true,
   "prompt": "Guard for git push. Hook input: $ARGUMENTS\nBlock it ({\"ok\": false, \"reason\": \"...\"}) if it force-pushes or pushes to main, master or production. Otherwise answer {\"ok\": true}."}]}
 ```
+ShipShape ships this rule as code in `hook_guard.py` instead, because a regex decides it just as well and costs no model call.
 
 ## Add your own
 Add an entry to your project's `.claude/settings.json` (it applies next to the plugin's hooks):
@@ -56,5 +58,5 @@ Add an entry to your project's `.claude/settings.json` (it applies next to the p
 ## Limits (be honest about them)
 - A `prompt` hook sees the hook input only, not the conversation. Rules about approvals use `agent` hooks, which read `transcript_path`; that file is written asynchronously and can lag the current turn by a moment.
 - Model judgement is not a security boundary. Hard limits belong in permission rules (`deny`) and in the scripts (ShipShape's scripts enforce allow-lists, never-pay, stop-before-input and desktop gates themselves).
-- `if` matching on Bash and PowerShell is best-effort (wildcards over the command text). Every Bash guard is mirrored under the `PowerShell` matcher, because Windows sessions often use the PowerShell tool.
-- The commit-scan command hook is written for a POSIX shell. Claude Code runs command hooks through Git Bash on Windows when it is installed (it normally is); without Git Bash that one hook cannot run, so install Git for Windows.
+- `if` matching on Bash and PowerShell is best-effort (wildcards over the command text). The kit's own command guard uses the matcher `Bash|PowerShell|Read` and classifies the command text itself, so one handler covers both shells.
+- The guard command hook is written for a POSIX shell. Claude Code runs command hooks through Git Bash on Windows when it is installed (it normally is); without Git Bash that one hook cannot run, so install Git for Windows.

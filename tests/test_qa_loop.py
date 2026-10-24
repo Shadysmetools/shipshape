@@ -127,7 +127,7 @@ def test_round_runs_each_plan_twice_and_flags_flaky(tmp_path):
     led = qa_loop.new_ledger("g", [str(tmp_path / "plan.json")])
     calls = []
 
-    def fake_runner(plan, out, timeout, narrate):
+    def fake_runner(plan, out, timeout, narrate, target=None):
         calls.append(out)
         res = "PASS" if len(calls) == 1 else "FAIL"
         return {"summary": "", "results": [{"id": "TC-1", "result": res, "evidence": "x.png"}]}

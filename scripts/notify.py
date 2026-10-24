@@ -46,13 +46,58 @@ TEMPLATES = {
 
 
 # ------------------------------------------------------------- config + secrets
+class ConfigError(Exception):
+    """qa.config.yaml is unusable; the message is one readable line."""
+
+
+SECRET_FIELDS = ("token", "webhook_url", "url", "password", "account_sid", "auth_token")
+
+
+def validate_config(cfg, path="qa.config.yaml"):
+    """Check the shapes notify.py relies on. Raises ConfigError with the exact key path."""
+    if not isinstance(cfg, dict):
+        raise ConfigError(f"config error in {path}: the top level must be a mapping")
+    notify = cfg.get("notify") or {}
+    if not isinstance(notify, dict):
+        raise ConfigError(f"config error at notify: expected a mapping of channels")
+    for name, ch in notify.items():
+        if ch is None:
+            continue
+        if not isinstance(ch, dict):
+            raise ConfigError(f"config error at notify.{name}: expected a mapping (enabled, token, ...)")
+        if "enabled" in ch and not isinstance(ch["enabled"], bool):
+            raise ConfigError(f"config error at notify.{name}.enabled: expected true or false, got {ch['enabled']!r}")
+        for field in SECRET_FIELDS:
+            spec = ch.get(field)
+            if spec is None or isinstance(spec, str):
+                continue
+            ok = isinstance(spec, dict) and len(spec) == 1 and (("env" in spec and isinstance(spec["env"], str)) or
+                                                                 ("keyring" in spec and isinstance(spec["keyring"], str) and "/" in spec["keyring"]))
+            if not ok:
+                raise ConfigError(f"config error at notify.{name}.{field}: expected {{env: NAME}} or {{keyring: service/user}}, got {spec!r}")
+        for field in ("to",):
+            if field in ch and not isinstance(ch[field], list):
+                raise ConfigError(f"config error at notify.{name}.{field}: expected a list of recipients")
+    return cfg
+
+
 def load_config(path):
-    with open(path, encoding="utf-8-sig") as fh:  # tolerate a BOM written by Windows editors
-        text = fh.read()
-    if path.endswith((".yaml", ".yml")):
-        import yaml  # PyYAML
-        return yaml.safe_load(text) or {}
-    return json.loads(text)
+    try:
+        with open(path, encoding="utf-8-sig") as fh:  # tolerate a BOM written by Windows editors
+            text = fh.read()
+    except FileNotFoundError:
+        raise ConfigError(f"config file not found: {path}") from None
+    try:
+        if path.endswith((".yaml", ".yml")):
+            import yaml  # PyYAML
+            cfg = yaml.safe_load(text) or {}
+        else:
+            cfg = json.loads(text)
+    except Exception as exc:  # yaml.YAMLError / json.JSONDecodeError: report the place, not a traceback
+        mark = getattr(exc, "problem_mark", None)
+        where = f" (line {mark.line + 1}, column {mark.column + 1})" if mark is not None else ""
+        raise ConfigError(f"config error in {path}: not valid {'YAML' if path.endswith(('.yaml', '.yml')) else 'JSON'}{where}") from None
+    return validate_config(cfg, path)
 
 
 def secret(spec, env=None):
@@ -379,7 +424,14 @@ def main(argv=None):
     ap.add_argument("--only")
     a = ap.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
-    cfg = load_config(a.config)
+    try:
+        cfg = load_config(a.config)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    if not os.path.isdir(a.run_dir):
+        print(f"ERROR: run folder not found: {a.run_dir}")
+        return 2
     res = deliver(a.run_dir, cfg, a.lang, a.send, a.only)
     for r in res:
         print(f"{r['channel']}: {r['status']}" + (f" ({r.get('detail')})" if r.get("detail") else ""))

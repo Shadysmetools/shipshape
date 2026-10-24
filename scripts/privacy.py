@@ -33,7 +33,8 @@ PATTERNS = [
     ("email", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
     # international (+country ...), NANP-style (555) 123-4567 / 555-123-4567, or a local 0XXXXXXXXX(X) mobile
     ("phone", re.compile(r"(?<![\w.+])(?:\+\d{1,3}[ -]?\(?\d{1,4}\)?(?:[ -]?\d{2,4}){2,4}|\(?\d{3}\)?[ -]\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|0\d{9,10})(?![\w.])")),
-    ("user_path", re.compile(r"(?i)(?:[A-Z]:[\\/]+Users[\\/]+|/home/|/Users/)(?!<)[^\\/\s'\"]+")),
+    # a home folder on any OS, or an absolute path on any Windows drive letter (D:\work\<company>\repo)
+    ("user_path", re.compile(r"(?i)(?:[A-Z]:[\\/]+Users[\\/]+|/home/|/Users/)(?!<)[^\\/\s'\"]+|(?<![\w])[A-Za-z]:(?:\\\\|\\|/)(?!<)[^\\/\s'\"<>:]+[\\/]")),
 ]
 
 REPLACEMENT = {
@@ -42,7 +43,8 @@ REPLACEMENT = {
 
 # Placeholders that are allowed to look like data (documentation examples).
 ALLOW = re.compile(r"(?i)(?:example\.(?:com|org|net)|@users\.noreply\.github\.com|noreply@anthropic\.com|"
-                   r"\+00 000 000 0000|000-000-0000|<[a-z_-]+>|your[-_]?(?:name|email)|\$\{[A-Z_]+)")
+                   r"\+00 000 000 0000|000-000-0000|<[a-z_-]+>|your[-_]?(?:name|email)|\$\{[A-Z_]+|"
+                   r"[A-Za-z]:[\\/]+(?:path|proj|\.\.\.)[\\/]|path[\\/]to[\\/])")  # documentation placeholders
 
 
 def load_denylist(path=None):

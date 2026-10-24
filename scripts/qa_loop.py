@@ -57,10 +57,15 @@ def save(run, ledger):
     os.replace(tmp, os.path.join(run, "ledger.json"))  # atomic: a crash never leaves half a ledger
 
 
-def new_ledger(goal, plans, max_rounds=5, budget_min=120, round_timeout=900):
+def new_ledger(goal, plans, max_rounds=5, budget_min=120, round_timeout=900, target=None):
     return {"goal": goal, "created": now(), "status": "running", "stop_reason": None,
             "limits": {"max_rounds": max_rounds, "budget_minutes": budget_min, "round_timeout_sec": round_timeout},
-            "plans": plans, "rounds": [], "bugs": [], "human_gates": [], "elapsed_minutes": 0.0}
+            "target": target or {}, "plans": plans, "rounds": [], "bugs": [], "human_gates": [], "elapsed_minutes": 0.0}
+
+
+def plan_path(run_dir, plan):
+    """Plans are stored relative to the run folder (no user paths in ledger.json); resolve them here."""
+    return plan if os.path.isabs(plan) else os.path.normpath(os.path.join(run_dir, plan))
 
 
 def failing_set(rnd):
@@ -133,13 +138,25 @@ def absorb_round(ledger, runs, started, finished, minutes):
     return rnd
 
 
-def run_plan(plan, out, timeout, narrate=False):
+def run_plan(plan, out, timeout, narrate=False, target=None):
     cmd = [sys.executable, os.path.join(HERE, "record.py"), plan, "--out", out, "--total-timeout", str(timeout)]
     if narrate:
         cmd.append("--narrate")
+    target = target or {}
+    if target.get("url"):
+        cmd += ["--base-url", target["url"]]
+    for h in target.get("allow_hosts") or []:
+        cmd += ["--allow-host", h]
     name = os.path.splitext(os.path.basename(plan))[0]
     try:
-        subprocess.run(cmd, timeout=timeout + 120, capture_output=True)
+        p = subprocess.run(cmd, timeout=timeout + 120, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        for line in (p.stdout or "").splitlines():
+            if line.startswith("[record]"):
+                print(line)
+        if p.returncode == 2:  # a plan error: one readable line from record.py
+            msg = ((p.stdout or "").strip().splitlines() or ["plan error"])[-1]
+            return {"summary": "0 pass / 0 fail / 1 blocked", "results": [{"id": f"{name}-plan", "title": name, "result": "BLOCKED",
+                                                                           "evidence": "", "note": msg}]}
         return json.load(open(os.path.join(out, "results.json"), encoding="utf-8"))
     except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
         return {"summary": "0 pass / 0 fail / 1 blocked", "results": [{"id": f"{name}-run", "title": name, "result": "BLOCKED",
@@ -159,7 +176,8 @@ def run_round(run_dir, ledger, narrate=False, passes=2, runner=None):
     for plan in ledger["plans"]:
         name = os.path.splitext(os.path.basename(plan))[0]
         outs = [os.path.join(run_dir, rdir, name, f"pass-{k + 1}") for k in range(passes)]
-        res = [runner(plan, o, timeout, narrate and k == 0) for k, o in enumerate(outs)]
+        # both passes are narrated: the clips are cached after pass 1, so pass 2 costs nothing extra
+        res = [runner(plan_path(run_dir, plan), o, timeout, narrate, ledger.get("target")) for o in outs]
         rows = res[0].get("results", [])
         if passes > 1:
             rows = report.combine_passes(res[0].get("results", []), res[1].get("results", []))
@@ -167,7 +185,9 @@ def run_round(run_dir, ledger, narrate=False, passes=2, runner=None):
                 r["evidence"] = r.get("evidence", "").split(" + ")[0]
         runs.append({"plan": plan, "dir": os.path.relpath(outs[0], run_dir).replace(os.sep, "/"), "passes": passes,
                      "summary": res[0].get("summary"), "video": res[0].get("video"), "results": rows,
-                     "console": res[0].get("console", []), "network": res[0].get("network", []), "stopped": res[0].get("stopped"), "mixed": res[0].get("mixed")})
+                     "console": res[0].get("console", []), "network": res[0].get("network", []), "stopped": res[0].get("stopped"), "mixed": res[0].get("mixed"),
+                     "base_url": res[0].get("base_url"), "target_notes": res[0].get("target_notes", []),
+                     "narration": [r.get("narration_note") or ("voice" if r.get("narrated") else "no voice") for r in res]})
     return absorb_round(ledger, runs, started, now(), (time.time() - t0) / 60)
 
 
@@ -193,6 +213,8 @@ def main(argv=None):
     ap.add_argument("--budget-min", type=int, default=120)
     ap.add_argument("--round-timeout", type=int, default=900)
     ap.add_argument("--narrate", action="store_true")
+    ap.add_argument("--url", help="target base URL; it overrides the plans' base_url")
+    ap.add_argument("--allow-host", action="append", default=[], help="allowed hosts; they override the plans' allow_hosts")
     ap.add_argument("--passes", type=int, default=2, choices=(1, 2), help="independent passes per plan (2 = flakiness check)")
     ap.add_argument("--id")
     ap.add_argument("--status", dest="bug_status", choices=("verified", "refuted", "filed", "fixed"))
@@ -212,7 +234,13 @@ def main(argv=None):
         if os.path.exists(os.path.join(run, "ledger.json")):
             print(json.dumps({"run": run, "resumed": True, **decide(load(run))}))
             return 0
-        save(run, new_ledger(a.goal, [os.path.abspath(p) for p in a.plan], a.max_rounds, a.budget_min, a.round_timeout))
+        missing = [p for p in a.plan if not os.path.isfile(p)]
+        if missing:
+            print("ERROR: plan file not found: " + ", ".join(missing))
+            return 2
+        rel = [os.path.relpath(os.path.abspath(p), os.path.abspath(run)).replace(os.sep, "/") for p in a.plan]
+        target = {"url": a.url, "allow_hosts": a.allow_host} if (a.url or a.allow_host) else {}
+        save(run, new_ledger(a.goal, rel, a.max_rounds, a.budget_min, a.round_timeout, target))
         print(json.dumps({"run": run, "resumed": False, **decide(load(run))}))
         return 0
     if a.cmd == "resume":

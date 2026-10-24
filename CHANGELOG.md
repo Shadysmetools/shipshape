@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.1 (2026-10-24)
+Fixes from the independent evaluation of 0.1.0 (score 6.5/10), in its order of impact.
+
+- **`--url` now wins over a plan's `base_url`** (`record.py --base-url/--allow-host`, the ledger stores the target, `qa_loop.py round` passes it). A dead target now fails instead of reporting "goal met" from the plan's embedded URL; the override is printed and stored in `results.json`.
+- Privacy scanner catches absolute paths on any Windows drive letter, not only `C:\Users`; tutorial manifests use relative paths.
+- README and QUICKSTART state honest timings (first install about 20 min because of Chromium; demo about 6 min) and explain the two names (repo/marketplace `shipshape`, plugin `smetools-agent-kit`); installers print the real marketplace owner.
+- `qa.config.yaml` is validated: broken YAML, a non-boolean `enabled` or a secret spec that is not `{env: NAME}` / `{keyring: service/user}` give one `config error at notify.<channel>.<field>` line (exit 2) instead of a traceback.
+- Bad plan files fail fast with the path and line (`record.py` exit 2, `full_qa.py` checks every `--plan` before step 1, `qa_loop.py start` refuses missing plans).
+- Narration: both passes are narrated (clips are cached, so pass 2 is free); `results.json` carries `narration_note`, the round prints it, and the HTML report marks each pass "voice" or "no voice (reason)".
+- `narrator.py report` degrades like the recorder when no voice can be made: captions only, one warning, exit 0.
+- Installer: Playwright pinned to `1.63.*`, no `pip --upgrade`, Chromium only by default (Firefox/WebKit behind `--with-browsers` / `-WithBrowsers`), download sizes printed.
+- Hooks: 33 handlers (11 distinct texts) collapsed to 6. One deterministic command hook (`scripts/hook_guard.py`, matcher `Bash|PowerShell|Read`) denies secret reads, literal keys, force/protected pushes and leaky commits, and routes merges, deletes, real delivery and desktop runs to the user's own permission prompt (`permissionDecision: ask`). No model call on ordinary file reads any more. Marketplace `source` is `"."`.
+- `run-qa` (sh + ps1) refuses to start when port 8765 is taken and kills the demo server's process tree; `ledger.json` stores plan paths relative to the run folder; `doctor.py` npm checks time out after 15 s.
+
 ## 0.1.0 (2026-10-22)
 First release of ShipShape (plugin id `smetools-agent-kit`).
 

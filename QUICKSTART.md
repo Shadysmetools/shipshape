@@ -1,8 +1,8 @@
-# ShipShape quickstart: zero to a recorded QA run in 10 minutes
+# ShipShape quickstart: zero to a recorded QA run in about 30 minutes (10 when Playwright is already installed)
 
 Works on Windows 10/11 and macOS (Linux too). Fake data only, nothing leaves your machine.
 
-## 1. Install (about 4 min)
+## 1. Install (about 20 min on a first install: Chromium is a 150 MB download; about 4 min when it is already there)
 **macOS**
 ```bash
 brew install python node ffmpeg          # skip what you already have
@@ -14,7 +14,9 @@ bash bin/install.sh
 git clone https://github.com/Shadysmetools/shipshape.git; cd shipshape
 powershell -ExecutionPolicy Bypass -File bin\install.ps1     # installs Node/ffmpeg with winget if missing (per user)
 ```
-The installer covers the Python packages, the Playwright browsers (Chromium, Firefox, WebKit), the pinned Playwright MCP and Chrome DevTools MCP, and the Playwright CLI. Optional flags: `--with-desktop` / `-WithDesktop` (pyautogui, pywinauto), `--with-k6` / `-WithK6`, `--with-security` / `-WithSecurity` (gitleaks, pip-audit).
+The installer covers the Python packages (Playwright pinned to one minor, so it never re-downloads browsers behind your back), Chromium, the pinned Playwright MCP and Chrome DevTools MCP, and the Playwright CLI. Optional flags: `--with-browsers` / `-WithBrowsers` (Firefox + WebKit for cross-browser runs), `--with-desktop` / `-WithDesktop` (pyautogui, pywinauto), `--with-k6` / `-WithK6`, `--with-security` / `-WithSecurity` (gitleaks, pip-audit).
+
+Names: the repo and marketplace are `shipshape`; the plugin inside is `smetools-agent-kit`. You add the first and install the second.
 
 ## 2. Check (30 s)
 ```bash
@@ -29,7 +31,7 @@ Every line should say OK, except the optional ones. Each FAIL line prints its fi
 ```
 Restart Claude Code. You should see `ShipShape ready: /qa-goal /qa-run ...` at session start.
 
-## 4. First recorded QA run (2 min)
+## 4. First recorded QA run (about 6 min: two recorded passes, a smoke load test, the voice summary)
 ```bash
 bash bin/run-qa.sh demo       # Windows: powershell -File bin\run-qa.ps1 demo
 ```
