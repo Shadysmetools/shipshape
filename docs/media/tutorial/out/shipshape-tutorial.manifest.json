@@ -1,7 +1,7 @@
 {
- "file": "E:\\knowcap-dev\\smetools-agent-kit\\docs\\media\\tutorial\\out\\shipshape-tutorial.mp4",
- "seconds": 515.471,
- "mb": 16.2,
+ "file": "E://knowcap-dev//smetools-agent-kit//docs//media//tutorial//out//shipshape-tutorial.mp4",
+ "seconds": 515.001,
+ "mb": 18.5,
  "chapters": [
   [
    0.0,
@@ -20,31 +20,31 @@
    "/qa-goal on the example app"
   ],
   [
-   312.93,
+   312.46,
    "The local HTML report"
   ],
   [
-   348.56,
+   348.09,
    "Auto-delivery dry run"
   ],
   [
-   374.46,
+   373.99,
    "A plain-language hook blocks an unsafe action"
   ],
   [
-   412.41,
+   411.94,
    "Desktop control (gated)"
   ],
   [
-   445.34,
+   444.87,
    "/timesheet"
   ],
   [
-   472.14,
+   471.67,
    "/odoo-check"
   ],
   [
-   495.65,
+   495.18,
    "Where to get help"
   ]
  ],
@@ -149,14 +149,14 @@
    "id": "goal-regression",
    "kind": "video",
    "start": 233.24,
-   "dur": 41.87,
+   "dur": 41.4,
    "mock": false,
    "tag": "LIVE RECORDING"
   },
   {
    "id": "goal-refute-run",
    "kind": "terminal",
-   "start": 275.11,
+   "start": 274.64,
    "dur": 11.74,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -164,7 +164,7 @@
   {
    "id": "goal-refuter",
    "kind": "terminal",
-   "start": 286.85,
+   "start": 286.38,
    "dur": 26.08,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -172,7 +172,7 @@
   {
    "id": "report",
    "kind": "scroll",
-   "start": 312.93,
+   "start": 312.46,
    "dur": 35.63,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -180,7 +180,7 @@
   {
    "id": "deliver",
    "kind": "terminal",
-   "start": 348.56,
+   "start": 348.09,
    "dur": 25.9,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -188,7 +188,7 @@
   {
    "id": "hooks-file",
    "kind": "terminal",
-   "start": 374.46,
+   "start": 373.99,
    "dur": 16.73,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -196,7 +196,7 @@
   {
    "id": "hooks-block",
    "kind": "terminal",
-   "start": 391.2,
+   "start": 390.73,
    "dur": 21.21,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -204,7 +204,7 @@
   {
    "id": "desktop",
    "kind": "terminal",
-   "start": 412.41,
+   "start": 411.94,
    "dur": 32.93,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -212,7 +212,7 @@
   {
    "id": "timesheet",
    "kind": "terminal",
-   "start": 445.34,
+   "start": 444.87,
    "dur": 26.8,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -220,7 +220,7 @@
   {
    "id": "odoo",
    "kind": "terminal",
-   "start": 472.14,
+   "start": 471.67,
    "dur": 23.51,
    "mock": false,
    "tag": "REAL OUTPUT"
@@ -228,7 +228,7 @@
   {
    "id": "help",
    "kind": "card",
-   "start": 495.65,
+   "start": 495.18,
    "dur": 19.8,
    "mock": false,
    "tag": "ILLUSTRATION"

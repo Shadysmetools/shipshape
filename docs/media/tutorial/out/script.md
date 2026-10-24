@@ -107,7 +107,7 @@ Narration script, generated from scenes.yaml by make_tutorial.py. Voice: en-US-A
 - The live regression recorder replays your regression list as a real user, read-only on staging or live. Here is the narrated video the kit produced itself.
   - AR: يعيد مسجّل الانحدار تشغيل قائمة الاختبارات كمستخدم حقيقي، للقراءة فقط على بيئة التجربة أو الإنتاج. وهذا هو الفيديو المروي الذي أنتجته الحزمة بنفسها.
 
-**[04:35] A failure pauses the loop: verify, then refute** (terminal, REAL OUTPUT)
+**[04:34] A failure pauses the loop: verify, then refute** (terminal, REAL OUTPUT)
 
 - Now a failure. A second plan expects a returning user to see: welcome back. Both passes fail, so the loop pauses and asks for verify and refute.
   - AR: والآن حالة فشل: خطة ثانية تتوقع أن يرى المستخدم العائد عبارة: مرحباً بعودتك. فشلت التمريرتان، فتوقفت الحلقة وطلبت التحقق والتفنيد.
@@ -147,14 +147,14 @@ Narration script, generated from scenes.yaml by make_tutorial.py. Voice: en-US-A
 
 ## A plain-language hook blocks an unsafe action
 
-**[06:14] Rules written in plain language** (terminal, REAL OUTPUT)
+**[06:13] Rules written in plain language** (terminal, REAL OUTPUT)
 
 - The guard rails are not just advice. The plugin ships hooks that Claude Code runs before risky tools, and most of them are written in plain language.
   - AR: قواعد الحماية ليست مجرد نصائح. فالإضافة تأتي بخطافات يشغّلها Claude Code قبل الأدوات الخطرة، ومعظمها مكتوب بلغة بسيطة.
 - For example: block a git push that force-pushes, or pushes to main or production.
   - AR: مثلاً: امنع أي git push يدفع بالقوة، أو يدفع إلى main أو إلى بيئة الإنتاج.
 
-**[06:31] Claude tries a force push to main** (terminal, REAL OUTPUT)
+**[06:30] Claude tries a force push to main** (terminal, REAL OUTPUT)
 
 - Here we asked Claude, with the plugin loaded, to force-push to main in a throwaway repo. The hook blocked it before git was even called.
   - AR: هنا طلبنا من Claude، والإضافة محمّلة، أن يدفع بالقوة إلى main في مستودع تجريبي. فمنعه الخطاف قبل أن يُستدعى git أصلاً.
@@ -163,7 +163,7 @@ Narration script, generated from scenes.yaml by make_tutorial.py. Voice: en-US-A
 
 ## Desktop control (gated)
 
-**[06:52] Outside the browser, behind gates** (terminal, REAL OUTPUT)
+**[06:51] Outside the browser, behind gates** (terminal, REAL OUTPUT)
 
 - Some flows live outside the browser: native apps, file pickers, OS dialogs. ShipShape can drive the desktop too, but only behind gates.
   - AR: بعض المسارات تكون خارج المتصفح: تطبيقات أصلية، ونوافذ اختيار الملفات، ونوافذ النظام. ويستطيع ShipShape التحكم في سطح المكتب أيضاً، لكن خلف بوابات حماية فقط.
@@ -174,7 +174,7 @@ Narration script, generated from scenes.yaml by make_tutorial.py. Voice: en-US-A
 
 ## /timesheet
 
-**[07:25] Real hours from Claude Code logs** (terminal, REAL OUTPUT)
+**[07:24] Real hours from Claude Code logs** (terminal, REAL OUTPUT)
 
 - The kit is not only QA. /timesheet measures real working hours from Claude Code session logs, merging sub-agents so parallel work counts once.
   - AR: الحزمة ليست لضمان الجودة فقط. فأمر timesheet يقيس ساعات العمل الفعلية من سجلات جلسات Claude Code، ويدمج الوكلاء الفرعيين حتى يُحتسب العمل المتوازي مرة واحدة.
@@ -185,7 +185,7 @@ Narration script, generated from scenes.yaml by make_tutorial.py. Voice: en-US-A
 
 ## /odoo-check
 
-**[07:52] Pre-deploy checks for an Odoo module** (terminal, REAL OUTPUT)
+**[07:51] Pre-deploy checks for an Odoo module** (terminal, REAL OUTPUT)
 
 - /odoo-check runs pre-deploy checks on an Odoo module. This fake loyalty module has four problems.
   - AR: أمر odoo-check يشغّل فحوصات ما قبل النشر على وحدة Odoo. وهذه الوحدة الوهمية لنقاط الولاء فيها أربع مشكلات.
@@ -210,8 +210,10 @@ Narration script, generated from scenes.yaml by make_tutorial.py. Voice: en-US-A
 - Meet ShipShape: an autonomous QA crew that lives in Claude Code.
 - Give it a goal. It reviews your code and security, then runs every test twice in a real browser, on video.
 - A refuter attacks every failure, so false alarms never become bugs.
+- Here it proved the test expected the wrong text, so no bug was filed.
 - You get one offline report with load results, evidence and trends, delivered to Telegram or WhatsApp only when you say send.
 - Plain-language hooks block unsafe moves, like a force push to main.
+- Plus gated desktop control, real timesheets from your Claude Code logs, and pre-deploy checks for Odoo modules.
 - Install it in two commands, and watch the full ten minute tutorial to go from zero to self-testing.
 
 _Narration words (tutorial): 1161_

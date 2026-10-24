@@ -79,12 +79,12 @@ with the fix for each.
 Channel secrets are only checked by name. Their values are never printed.
 
 21
-00:01:41,961 --> 00:01:48,201
-Now the main event. In Claude Code, type /qa-goal, followed by what should work. Here:
+00:01:41,961 --> 00:01:47,766
+Now the main event. In Claude Code, type /qa-goal, followed by what should work.
 
 22
-00:01:48,201 --> 00:01:51,297
-signup to welcome works on the demo shop.
+00:01:47,766 --> 00:01:51,297
+Here: signup to welcome works on the demo shop.
 
 23
 00:01:51,627 --> 00:01:57,795
@@ -119,12 +119,12 @@ and the security pass sweeps for secrets and checks headers on the allow-listed 
 Security findings stay private. Only the count leaves this folder.
 
 31
-00:02:34,079 --> 00:02:37,748
-Each role is a plain agent file you can read and change:
+00:02:34,079 --> 00:02:40,500
+Each role is a plain agent file you can read and change: the code reviewer, the security reviewer,
 
 32
-00:02:37,748 --> 00:02:43,175
-the code reviewer, the security reviewer, the automation tester, and the refuter.
+00:02:40,500 --> 00:02:43,175
+the automation tester, and the refuter.
 
 33
 00:02:43,505 --> 00:02:49,337
@@ -139,12 +139,12 @@ Step four runs every test plan twice, as two independent passes.
 A result only counts if both passes agree. If they disagree, the case is marked flaky.
 
 36
-00:03:01,945 --> 00:03:05,239
-Here, four checks pass, and one is blocked on purpose:
+00:03:01,945 --> 00:03:03,348
+Here, four checks pass,
 
 37
-00:03:05,239 --> 00:03:10,177
-the never-pay rule stopped the run at the Pay now button and asked for a human.
+00:03:03,348 --> 00:03:10,177
+and one is blocked on purpose: the never-pay rule stopped the run at the Pay now button and asked for a human.
 
 38
 00:03:11,313 --> 00:03:16,809
@@ -191,198 +191,194 @@ Here is the narrated video the kit produced itself.
 We open the local demo shop's sign-up page. Everything here is fake test data.
 
 49
-00:04:10,106 --> 00:04:14,076
+00:04:10,209 --> 00:04:14,179
 First, a negative case: we submit the form empty.
 
 50
-00:04:14,712 --> 00:04:18,250
+00:04:14,430 --> 00:04:17,968
 The form refuses an empty name and says why.
 
 51
-00:04:18,908 --> 00:04:22,902
+00:04:18,293 --> 00:04:22,287
 Now we fill in a test user with a fake example address.
 
 52
-00:04:23,135 --> 00:04:27,513
+00:04:22,467 --> 00:04:26,845
 The account is created and the welcome message greets the test user.
 
 53
-00:04:35,663 --> 00:04:41,163
+00:04:35,193 --> 00:04:40,693
 Now a failure. A second plan expects a returning user to see: welcome back.
 
 54
-00:04:41,163 --> 00:04:46,271
+00:04:40,693 --> 00:04:45,801
 Both passes fail, so the loop pauses and asks for verify and refute.
 
 55
-00:04:47,401 --> 00:04:50,502
+00:04:46,931 --> 00:04:50,032
 The refuter is the second agent of a two-agent bar.
 
 56
-00:04:50,502 --> 00:04:54,697
+00:04:50,032 --> 00:04:54,227
 It works on its own path and tries hard to prove the failure wrong.
 
 57
-00:04:55,027 --> 00:05:00,997
+00:04:54,557 --> 00:05:00,527
 Its verdict: refuted. Neither the app nor the original plan ever promised welcome back.
 
 58
-00:05:00,997 --> 00:05:04,411
+00:05:00,527 --> 00:05:03,941
 The test expectation was wrong, not the product.
 
 59
-00:05:04,741 --> 00:05:08,325
+00:05:04,271 --> 00:05:07,855
 So no bug is filed, and the ledger shows zero open bugs.
 
 60
-00:05:08,325 --> 00:05:12,349
+00:05:07,855 --> 00:05:11,879
 That is how ShipShape keeps false alarms out of your tracker.
 
 61
-00:05:13,479 --> 00:05:21,567
+00:05:13,009 --> 00:05:21,097
 Step six writes one self-contained HTML report. It opens offline, so you can attach it anywhere.
 
 62
-00:05:21,897 --> 00:05:27,115
+00:05:21,427 --> 00:05:26,645
 At the top, the verdict and the counts: four pass, zero fail, one blocked.
 
 63
-00:05:27,115 --> 00:05:32,313
+00:05:26,645 --> 00:05:31,843
 Then every case with its evidence, and the videos you can play in place.
 
 64
-00:05:32,643 --> 00:05:33,581
-Further down:
+00:05:32,173 --> 00:05:38,549
+Further down: console and network checks, the load chart, bugs that survived the refuter,
 
 65
-00:05:33,581 --> 00:05:40,294
-console and network checks, the load chart, bugs that survived the refuter, open human gates,
+00:05:38,549 --> 00:05:41,821
+open human gates, and the trend across runs.
 
 66
-00:05:40,294 --> 00:05:42,291
-and the trend across runs.
-
-67
-00:05:42,621 --> 00:05:47,973
+00:05:42,151 --> 00:05:47,503
 There is also a spoken summary, so a non-technical owner can just listen to the result.
 
-68
-00:05:49,112 --> 00:05:56,768
+67
+00:05:48,642 --> 00:05:56,298
 Step seven is delivery to Telegram, WhatsApp, Slack, email or a webhook, whatever your config lists.
 
-69
-00:05:57,098 --> 00:06:01,638
+68
+00:05:56,628 --> 00:06:01,168
 First a privacy scan of everything that would leave: zero findings.
 
-70
-00:06:01,638 --> 00:06:07,178
+69
+00:06:01,168 --> 00:06:06,708
 Then a dry run that prints exactly what would be sent, with the tokens left out.
 
-71
-00:06:07,508 --> 00:06:13,868
+70
+00:06:07,038 --> 00:06:13,398
 Nothing leaves the machine until the owner says send, and a channel that is not in the config is refused.
 
-72
-00:06:15,012 --> 00:06:21,252
+71
+00:06:14,542 --> 00:06:20,782
 The guard rails are not just advice. The plugin ships hooks that Claude Code runs before risky tools,
 
-73
-00:06:21,252 --> 00:06:24,276
+72
+00:06:20,782 --> 00:06:23,806
 and most of them are written in plain language.
 
-74
-00:06:24,606 --> 00:06:30,606
+73
+00:06:24,136 --> 00:06:30,136
 For example: block a git push that force-pushes, or pushes to main or production.
 
-75
-00:06:31,745 --> 00:06:37,158
+74
+00:06:31,275 --> 00:06:36,688
 Here we asked Claude, with the plugin loaded, to force-push to main in a throwaway repo.
 
-76
-00:06:37,158 --> 00:06:40,169
+75
+00:06:36,688 --> 00:06:39,699
 The hook blocked it before git was even called.
 
-77
-00:06:40,499 --> 00:06:43,721
+76
+00:06:40,029 --> 00:06:43,251
 A second, deterministic hook scans every commit.
 
-78
-00:06:43,721 --> 00:06:50,634
+77
+00:06:43,251 --> 00:06:50,164
 A fake bot token was staged by mistake, so the commit is blocked, and only the kind and line are shown,
 
-79
-00:06:50,634 --> 00:06:51,827
+78
+00:06:50,164 --> 00:06:51,357
 never the value.
 
-80
-00:06:52,957 --> 00:06:58,545
+79
+00:06:52,487 --> 00:06:58,075
 Some flows live outside the browser: native apps, file pickers, OS dialogs.
 
-81
-00:06:58,545 --> 00:07:03,061
+80
+00:06:58,075 --> 00:07:02,591
 ShipShape can drive the desktop too, but only behind gates.
 
-82
-00:07:03,391 --> 00:07:08,174
+81
+00:07:02,921 --> 00:07:07,704
 With desktop control off in the config, the first step is refused.
 
-83
-00:07:08,174 --> 00:07:14,743
+82
+00:07:07,704 --> 00:07:14,273
 Turned on, only allow-listed apps run, and the delete step stops and asks the user first.
 
-84
-00:07:15,073 --> 00:07:20,628
+83
+00:07:14,603 --> 00:07:20,158
 Banking, payment and password apps are always refused, and every action is logged.
 
-85
-00:07:20,628 --> 00:07:24,745
+84
+00:07:20,158 --> 00:07:24,275
 These are dry runs, so nothing on this desktop was touched.
 
-86
-00:07:25,891 --> 00:07:32,777
+85
+00:07:25,421 --> 00:07:32,307
 The kit is not only QA. /timesheet measures real working hours from Claude Code session logs,
 
-87
-00:07:32,777 --> 00:07:36,451
+86
+00:07:32,307 --> 00:07:35,981
 merging sub-agents so parallel work counts once.
 
-88
-00:07:36,781 --> 00:07:43,803
+87
+00:07:36,311 --> 00:07:43,333
 Idle gaps are cut, blocks are mapped to tasks, and you get an Excel sheet plus Odoo import rows.
 
-89
-00:07:43,803 --> 00:07:46,045
+88
+00:07:43,333 --> 00:07:45,575
 This run uses synthetic logs.
 
-90
-00:07:46,375 --> 00:07:51,559
+89
+00:07:45,905 --> 00:07:51,089
 It never writes to Odoo by itself. A human reviews the file first.
 
-91
-00:07:52,691 --> 00:07:59,795
+90
+00:07:52,221 --> 00:07:59,325
 /odoo-check runs pre-deploy checks on an Odoo module. This fake loyalty module has four problems.
 
-92
-00:08:00,125 --> 00:08:06,968
+91
+00:07:59,655 --> 00:08:06,498
 A cron outside a no-update block, no neutralize script, a raw commit inside a model, and no tests.
 
-93
-00:08:06,968 --> 00:08:10,301
+92
+00:08:06,498 --> 00:08:09,831
 Each one is a classic way to break production.
 
-94
-00:08:10,631 --> 00:08:15,071
+93
+00:08:10,161 --> 00:08:14,601
 The Odoo expert agent then explains each fix before the deploy.
 
-95
-00:08:16,201 --> 00:08:21,361
+94
+00:08:15,731 --> 00:08:20,891
 When you get stuck, run the doctor first. It prints the fix for anything missing.
 
-96
-00:08:21,691 --> 00:08:28,051
+95
+00:08:21,221 --> 00:08:27,581
 The README and the docs folder cover every command, and you can simply ask Claude how to use any of them.
 
-97
-00:08:28,381 --> 00:08:34,861
+96
+00:08:27,911 --> 00:08:34,391
 For questions or bugs, open an issue on the repository. Thanks for watching, and happy shipping.
 

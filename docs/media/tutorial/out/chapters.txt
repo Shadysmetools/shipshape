@@ -4,8 +4,8 @@
 01:41 /qa-goal on the example app
 05:12 The local HTML report
 05:48 Auto-delivery dry run
-06:14 A plain-language hook blocks an unsafe action
-06:52 Desktop control (gated)
-07:25 /timesheet
-07:52 /odoo-check
+06:13 A plain-language hook blocks an unsafe action
+06:51 Desktop control (gated)
+07:24 /timesheet
+07:51 /odoo-check
 08:15 Where to get help
