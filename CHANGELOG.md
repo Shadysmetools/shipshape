@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- **`/qa-issue`** (#11): an agent files a ShipShape bug or gap from any session. It collects the title, what happened, expected, environment, logs and an optional video link, masks and scans the body with `privacy.py`, shows a dry-run preview, and runs `gh issue create -R <issues.repo> --label from-field --body-file ...` only after the user says yes. New config key `issues.repo` (default `Shadysmetools/shipshape`). The hook guard now routes `gh issue create` to the user's permission prompt (`ask`); tests in `tests/test_eval_fixes.py`.
+- **Team install and update flow** (#9): `docs/TEAM-SETUP.md` covers the fork or `#ref` branch, the version bump that updates need, auto-update (off by default), `claude plugin update`, pulling upstream, and customising without conflicts. New `CONTRIBUTING.md`. The marketplace entry no longer repeats `version` (it lives in `plugin.json` only, as the plugin docs require); a test guards it.
+- **Packaging for sale, draft** (#10): `docs/FOR-BUYERS.md` (what it does, client install, support boundaries, a placeholder tier table, what stays internal, and the rule that ShipShape provides no keys or third-party accounts) and `LICENSE-OPTIONS.md` (proprietary vs BSL vs MIT vs Apache-2.0). No license is chosen: the owner decides. README links "For buyers".
 - **Missing API keys are asked for, not just reported.** New `scripts/keys.py`: lookup order env var, OS keychain (`keyring`), then `~/.config/shipshape/secrets/keys.json` (outside the repo, owner-only, blocked by the read guard). When a key is missing, a masked window (or hidden terminal prompt) asks once and saves it. Used by every delivery channel on a real `--send` (never on a dry run) and by the OpenAI/ElevenLabs narrator. `keys.py check --config` lists what a project needs. `SMEKIT_NO_PROMPT=1` turns prompts off. Values are never printed. Tests: `tests/test_keys.py`.
 
 ## 0.1.1 (2026-10-24)

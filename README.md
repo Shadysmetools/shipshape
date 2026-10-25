@@ -19,7 +19,7 @@ It also ships a **timesheet agent**, which measures real working hours from Clau
 <p align="center"><img src="docs/media/readme/shipshape-preview.gif" width="720" alt="ShipShape teaser preview"></p>
 
 What the tutorial covers (8½ minutes), in order: what ShipShape is (0:13) · the rules it never breaks (0:37) · install in 5 steps (0:54) · `bin/doctor` health check (1:17) · your first `/qa-goal` (1:41) · agents and rounds (2:33) · narrated video evidence (3:10) · load test (3:33) · live regression (3:53) · the refuter (4:34) · the HTML report and old runs (5:12) · delivery to Telegram/WhatsApp (5:48) · plain-language hooks (6:13) · desktop control (6:51) · timesheet agent (7:24) · Odoo expert (7:51) · getting help (8:15).
-Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE.md](docs/GUIDE.md) · re-render the video yourself: `bin/make-video.sh tutorial`.
+Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE.md](docs/GUIDE.md) · **[For buyers](docs/FOR-BUYERS.md)** · [Team setup](docs/TEAM-SETUP.md) · re-render the video yourself: `bin/make-video.sh tutorial`.
 
 ---
 
@@ -87,7 +87,7 @@ Then, inside Claude Code:
 /plugin install smetools-agent-kit@shipshape
 ```
 Two names, on purpose: **`shipshape`** is the GitHub repo and the marketplace you add; **`smetools-agent-kit`** is the plugin id inside it (the one you install, and the prefix of its skills: `smetools-agent-kit:qa-goal-loop`).
-You can also add the marketplace from a local folder: `/plugin marketplace add /path/to/shipshape`.
+You can also add the marketplace from a local folder: `/plugin marketplace add /path/to/shipshape`, or pin a branch or tag with `#ref` (`/plugin marketplace add <your-org>/shipshape#team/<name>`). Teams: see [docs/TEAM-SETUP.md](docs/TEAM-SETUP.md) for the fork, update and contribute-back flow.
 
 Installing the plugin wires up the agents, skills, slash commands and hooks. It also adds two MCP servers: **Playwright MCP** (`@playwright/mcp@0.0.83`, video/tracing enabled, isolated profile) and **Chrome DevTools MCP** (`chrome-devtools-mcp@1.10.1`). No keys are needed for either.
 
@@ -125,6 +125,8 @@ In Claude Code, the same flow happens from plain requests:
 | `/qa-demo <feature>` | Demo video. |
 | `/qa-report` | HTML report and spoken summary. |
 | `/qa-deliver` | Send to the configured channels (dry-run first). |
+| `/qa-setup` | Setup interview: project, voice, channels, your own keys. |
+| `/qa-issue "<title>"` | File a ShipShape bug from any session: privacy-filtered, dry-run preview, filed only after you say yes. |
 | `/timesheet` | Measured hours, Excel and Odoo rows. |
 | `/odoo-check <module>` | Pre-deploy checks. |
 
@@ -138,6 +140,7 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 - the narrator voice and language;
 - the loop limits;
 - the delivery channels (each one names the **env var** holding its secret);
+- `issues.repo`: where `/qa-issue` files ShipShape bugs (default `Shadysmetools/shipshape`);
 - desktop control (`desktop.enabled`, `allow_apps`).
 
 ## Safety, by design
@@ -151,12 +154,16 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 
 Read more in `docs/OPERATING-RULES.md`, `docs/HOOKS-IN-PLAIN-LANGUAGE.md` and `docs/BROWSERS.md` (which browser for what).
 
+## For buyers
+
+What ShipShape does for a client, the install path, support boundaries and the (placeholder) tiers: [docs/FOR-BUYERS.md](docs/FOR-BUYERS.md). ShipShape provides no API keys or third-party accounts; each user supplies their own, stored only on their computer. License options are compared in [LICENSE-OPTIONS.md](LICENSE-OPTIONS.md); the owner picks one. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Tests
 
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **137 pass / 0 fail / 1 skipped** (138 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **171 pass / 0 fail / 1 skipped** (172 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
@@ -197,7 +204,8 @@ The suite covers:
 agents/            qa-lead, qa-code-reviewer, qa-security-reviewer, qa-automation-tester, qa-load-tester,
                    qa-live-regression-recorder, qa-desktop-tester, qa-demo-video-producer, qa-refuter,
                    timesheet-agent, odoo-expert
-commands/          /qa-goal /qa-run /qa-record /qa-load /qa-security /qa-demo /qa-report /qa-deliver /timesheet /odoo-check
+commands/          /qa-goal /qa-run /qa-record /qa-load /qa-security /qa-demo /qa-report /qa-deliver /qa-setup /qa-issue
+                   /timesheet /odoo-check
 skills/            progressive-disclosure SKILL.md per capability
 hooks/hooks.json   plain-language prompt/agent hooks + two command hooks
 workflows/         full-qa, demo, regression-loop (Claude Code Workflow scripts)
@@ -206,7 +214,7 @@ bin/               install / doctor / run-qa / make-video / send-report (.sh + .
 templates/         test plan, bug report, bug log, handoff, qa.config, plan, tasks, load (k6), odoo/
 examples/demo-app/ a local demo shop (fake data), plans, qa.config.yaml
 docs/              GUIDE, OPERATING-RULES, BROWSERS, HOOKS-IN-PLAIN-LANGUAGE, TIMESHEET-METHOD, ODOO-PLAYBOOK,
-                   SCHEDULED-MODE, SECURITY-SCAN, LESSONS-LEARNED, media/
+                   SCHEDULED-MODE, SECURITY-SCAN, LESSONS-LEARNED, TEAM-SETUP, FOR-BUYERS, media/
 ```
 
 ## FAQ
@@ -215,4 +223,4 @@ docs/              GUIDE, OPERATING-RULES, BROWSERS, HOOKS-IN-PLAIN-LANGUAGE, TI
 - **Arabic?** Set `narrator.lang: ar` (voices `ar-EG-ShakirNeural` / `ar-EG-SalmaNeural`). Delivery templates exist in EN and AR.
 - **Scheduled runs?** Off by default. See `docs/SCHEDULED-MODE.md`.
 
-See `QUICKSTART.md` for a 10-minute walkthrough and `docs/GUIDE.md` for the concepts. License: not chosen yet (`plugin.json` says `UNLICENSED`); the owner picks one before the public release.
+See `QUICKSTART.md` for a 10-minute walkthrough and `docs/GUIDE.md` for the concepts. License: not chosen yet (`plugin.json` says `UNLICENSED`); the owner picks one before the public release. Options: [LICENSE-OPTIONS.md](LICENSE-OPTIONS.md).

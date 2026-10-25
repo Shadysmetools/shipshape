@@ -13,6 +13,8 @@ loop:
   max_rounds: 3
   budget_minutes: 120
   passes: 2                               # every scenario twice; disagreement = FLAKY
+issues:
+  repo: Shadysmetools/shipshape           # where /qa-issue files ShipShape bugs and gaps (owner/repo; a team fork can point at its own)
 # Optional public links (e.g. a private bucket or intranet path) used when a file is too big to attach
 report_link_base: ""
 video_link_base: ""

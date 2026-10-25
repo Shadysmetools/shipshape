@@ -54,6 +54,8 @@ def test_plugin_and_marketplace_manifests():
     market = json.load(open(os.path.join(ROOT, ".claude-plugin", "marketplace.json")))
     assert plugin["name"] == market["plugins"][0]["name"] == "smetools-agent-kit"
     assert market["plugins"][0]["source"] == "."
+    # docs (host-marketplace "Release a new version"): set version in plugin.json only, never in both
+    assert plugin.get("version") and "version" not in market["plugins"][0]
 
 
 def test_mcp_servers_are_pinned_and_secret_free():
