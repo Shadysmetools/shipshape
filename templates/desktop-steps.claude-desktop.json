@@ -1,0 +1,24 @@
+{
+ "name": "Claude Desktop: type into the chat input, check it, clear it. Nothing is sent.",
+ "steps": [
+  {"do": "launch", "app": "Claude", "timeout": 40, "settle": 3, "shot": false, "say": "Open Claude Desktop, or bring it forward."},
+  {"do": "mask", "outside_control": {"role": "Edit", "name": "Write your prompt to Claude"}, "pad": 14, "timeout": 30, "say": "Hide everything except the message box: chats stay private."},
+  {"do": "record_start"},
+  {"do": "screenshot", "case": "CD-01", "name": "claude-window"},
+  {"do": "assert_text", "case": "CD-02", "name": "input-starts-empty", "control": {"role": "Edit", "name": "Write your prompt to Claude"}, "equals": "", "stop_on_fail": true, "say": "The message box is empty, so no draft of yours is touched."},
+  {"do": "type", "control": {"role": "Edit", "name": "Write your prompt to Claude"}, "text": "ShipShape device-control test (not sent)", "say": "Type a test line. Enter is never pressed."},
+  {"do": "wait", "sec": 1},
+  {"do": "assert_text", "case": "CD-03", "name": "text-appears", "control": {"role": "Edit", "name": "Write your prompt to Claude"}, "equals": "ShipShape device-control test (not sent)", "say": "Read it back: the text is in the box."},
+  {"do": "key", "keys": ["ctrl", "a"], "shot": false},
+  {"do": "key", "keys": ["backspace"], "say": "Select all and clear it."},
+  {"do": "wait", "sec": 1},
+  {"do": "assert_text", "case": "CD-04", "name": "input-cleared", "control": {"role": "Edit", "name": "Write your prompt to Claude"}, "equals": ""},
+  {"do": "close", "only_if_launched": true, "otherwise": "minimize", "say": "Leave Claude Desktop as it was."}
+ ],
+ "cleanup": [
+  {"do": "assert_text", "name": "box-holds-only-test-text", "control": {"role": "Edit", "name": "Write your prompt to Claude"}, "contains": "ShipShape device", "stop_on_fail": true},
+  {"do": "key", "keys": ["ctrl", "a"], "shot": false},
+  {"do": "key", "keys": ["backspace"], "shot": false},
+  {"do": "close", "only_if_launched": true, "otherwise": "minimize"}
+ ]
+}

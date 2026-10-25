@@ -40,7 +40,7 @@ Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE
 | Auto-delivery | Telegram, WhatsApp (Meta or Twilio), Slack, email, webhooks and Knowcap (upload, returns a Knowcap link), configured per project. Dry-run by default, and secrets come from env vars only. | `/qa-deliver` |
 | Voice narrator | Spoken run summaries for non-technical people, narration under any video (with ducking), and slide videos from screenshots. | `scripts/narrator.py` |
 | Demo videos | Polished feature demos and tutorials. | `/qa-demo` |
-| Desktop control | Native apps, OS dialogs and Electron apps on Windows/macOS. Uses Claude computer use when available, otherwise pywinauto/pyautogui/osascript. Gated, recorded and logged. | `qa-desktop-tester` |
+| Full-device control | Drives any app on the computer, not just the browser: Notepad, Claude Desktop, Electron apps, OS dialogs. You describe the goal in plain words. It launches, switches and closes windows, types, clicks, reads text, uses the clipboard, waits and checks results, using Windows UI Automation first and screen pixels as the fallback (Claude computer use is optional, with your own key). Every run has an allow-list, a visible banner, a mouse-to-corner stop and privacy masks, and is recorded on video and logged. It never types passwords, never pays, never sends in chat apps, and asks before anything irreversible. [Guide](docs/DESKTOP-CONTROL.md) | `/qa-desktop`, `scripts/desktop.py` |
 | Plain-language hooks | Safety rules written in English and judged by a model. For example: "never just say all green", "no Odoo writes without the owner's OK", "no sends to unlisted channels". | `hooks/hooks.json` |
 | Timesheet | Hours measured from session logs and git, mapped to tasks. Produces a 7-sheet Excel file and Odoo import rows, with self-checks. | `/timesheet` |
 | Odoo expert | Module conventions, guarded migrations, `neutralize.sql`, the Odoo.sh flow and a pre-deploy checker. | `/odoo-check` |
@@ -120,6 +120,7 @@ In Claude Code, the same flow happens from plain requests:
 | `/qa-goal "<goal>"` | The full autonomous loop. |
 | `/qa-run` | One pass of the scripted pipeline. |
 | `/qa-record` | Record one scenario. |
+| `/qa-desktop "<goal>"` | Control any app on this computer from a goal in plain words, on video, with N pass / M fail. |
 | `/qa-load <url> [profile]` | Load test. |
 | `/qa-security` | Security review. |
 | `/qa-demo <feature>` | Demo video. |
@@ -142,7 +143,7 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 - video length: `video.type` (simple / standard / walkthrough, caps about 60 / 150 / 240 s in `video.types`), `video.max_seconds` (a ceiling for every type) and `video.trim` (`speed`, `cut` or `off`). A plan can set `"video_type"`. The report shows the original and final length;
 - the delivery channels (each one names the **env var** holding its secret);
 - `issues.repo`: where `/qa-issue` files ShipShape bugs (default `Shadysmetools/shipshape`);
-- desktop control (`desktop.enabled`, `allow_apps`);
+- desktop control (`desktop.enabled`, `allow_apps`, `step_timeout`, `run_timeout`);
 - optional Odoo tickets (`odoo:`): `scripts/odoo_ticket.py read` gives the QA lead the ticket and the other agents' log-note analysis, `post` writes the result back as one log note, `move` sets the stage, and `watch` starts a run when a ticket enters a chosen stage (`docs/SCHEDULED-MODE.md`). The Odoo API key is your own (`keys.py set ODOO_API_KEY`); writes are dry-run unless `--send` and the owner approves.
 
 ## Safety, by design
@@ -165,7 +166,7 @@ What ShipShape does for a client, the install path, support boundaries and the (
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 8.1): **198 pass / 0 fail / 1 skipped** (199 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 8.1): **331 pass / 0 fail / 2 skipped** (333 collected). The two skipped tests are the live desktop tests (Notepad with `SMEKIT_DESKTOP_SMOKE=1`, Claude Desktop with `SMEKIT_DESKTOP_CLAUDE=1`), so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
@@ -178,7 +179,7 @@ The suite covers:
 - the security wrappers;
 - the narrator, the Odoo checker and the stack lock;
 - the Odoo ticket bridge (`tests/test_odoo_ticket.py`) against a mocked Odoo JSON-RPC: read, post (privacy-filtered, once per run), move (stage narrowed to the ticket's team), watch (one run per stage entry, baseline, time limit) and the hook gates;
-- the desktop gates (mock and dry-run);
+- full-device control (`tests/test_desktop.py`, mocked desktop): static and runtime gates (terminal, own process, UAC, allow-list by process not title, Enter in chat apps), focus checked before every typed character, user-activity pause, stop-on-fail, cleanup only after an early stop, clipboard restored, timeouts, mask geometry, two-pass combine, window-region recording, and the hook guard on the new steps;
 - the plugin manifests and hooks;
 - dry-runs of all three workflows with mocked agents;
 - a real Playwright recording smoke test against the local page (external requests blocked);
@@ -196,7 +197,7 @@ The suite covers:
 | Real sends to Telegram/WhatsApp/Slack/email | **not run**; tested with mocked HTTP and dry-run only |
 | Odoo ticket read/post/move/watch on a real Odoo | **not run**; tested against a mocked JSON-RPC server only (how a real Odoo renders the note is unchecked) |
 | k6 engine, gitleaks, pip-audit, osv-scanner | used when installed; not installed on the build machine, so only the "skipped" path is tested |
-| Desktop control on a real desktop | gated smoke test, not run in CI |
+| Desktop control on a real desktop | run live on Windows 11 (2026-10-25): Notepad 7 pass / 0 fail, twice on video; Claude Desktop 4 pass / 0 fail on video, nothing sent. Opt-in tests `SMEKIT_DESKTOP_SMOKE=1` / `SMEKIT_DESKTOP_CLAUDE=1`; not run in CI. Not verified: macOS, Claude computer use, multi-monitor screenshots (the test laptop has one display) |
 | Prompt and agent hooks judged live by a model | JSON validated; the model's judgement is not unit-testable. The deterministic commit-scan hook is tested through its literal hooks.json command |
 | `bin/run-qa.ps1 demo` on Windows | run here end to end: 2 pass / 0 fail, report, voice summary, dry-run delivery |
 | `bin/install.sh` / `install.ps1` | syntax-checked; not executed end to end on a clean machine |
@@ -209,7 +210,7 @@ The suite covers:
 agents/            qa-lead, qa-code-reviewer, qa-security-reviewer, qa-automation-tester, qa-load-tester,
                    qa-live-regression-recorder, qa-desktop-tester, qa-demo-video-producer, qa-refuter,
                    timesheet-agent, odoo-expert
-commands/          /qa-goal /qa-run /qa-record /qa-load /qa-security /qa-demo /qa-report /qa-deliver /qa-setup /qa-issue
+commands/          /qa-goal /qa-run /qa-record /qa-desktop /qa-load /qa-security /qa-demo /qa-report /qa-deliver /qa-setup /qa-issue
                    /timesheet /odoo-check
 skills/            progressive-disclosure SKILL.md per capability
 hooks/hooks.json   plain-language prompt/agent hooks + two command hooks

@@ -27,7 +27,7 @@ if (Have ffmpeg) { (ffmpeg -version | Select-Object -First 1) }
 
 Say 'Python packages'
 & $Py -m pip install --user -r (Join-Path $Root 'requirements.txt')
-if ($WithDesktop) { & $Py -m pip install --user pyautogui pywinauto keyring }
+if ($WithDesktop) { & $Py -m pip install --user pywinauto pyautogui mss pillow keyring }
 if ($WithSecurity) { & $Py -m pip install --user pip-audit }
 
 Say 'Playwright browser: Chromium (about 150 MB on a first install; already present = nothing to download)'

@@ -1,6 +1,26 @@
 # Changelog
 
 ## Unreleased
+- **Full-device control** (#20): ShipShape drives any app on the computer, not only the browser.
+  - **Command and engines.** New `/qa-desktop "<goal in plain words>"` command. The `qa-desktop-tester` agent turns the goal into steps, dry-runs them, runs them twice on video and reports N pass / M fail. `scripts/desktop.py` is extended, not replaced. Windows UI Automation (pywinauto `uia`) is the primary engine; pyautogui pixels are the fallback. Claude computer use (`computer_toolset_20260801`, your own `ANTHROPIC_API_KEY` through `keys.py`) is documented as optional. ShipShape ships no keys.
+  - **New steps:** `launch` (path, Start-menu name or PATH; `require_new`), `focus`, `minimize`, `close` (`only_if_launched`, `otherwise`), `wait_window`, `wait_text`, `read`, `clipboard_set`/`clipboard_get` (your clipboard is restored), `scroll`, `assert_text`/`assert_control`/`assert_window`, `mask`/`unmask`, `record_start`, multi-monitor `screenshot`, `stop_on_fail`, and a `cleanup` list that runs only when a run stops early.
+  - **New commands:** `desktop.py windows`, `inspect`, `engines`, `--passes 2`, `--narrate` (free edge voice).
+  - **Evidence:** the target window only is recorded (ffmpeg gdigrab region, hard length limit), one masked screenshot per step, `desktop-actions.jsonl`, `results.json` and `QA-REPORT.md`.
+  - **New gates:**
+    - focus is checked before every key, click and typed character: it must be the window under test or its dialog;
+    - terminals and the agent's own process chain are never targets;
+    - allow-list matching by process name, not window title;
+    - the run waits when a person is using the keyboard or mouse;
+    - UAC and installer prompts are refused;
+    - discard and "Don't save" count as irreversible;
+    - Enter or a newline in chat apps counts as a send;
+    - `close` presses Cancel rather than discard anyone's work;
+    - per-step and per-run timeouts plus a watchdog;
+    - privacy masks are confirmed on screen before the run continues;
+    - recording stops before a window closes;
+    - password fields are blacked out in screenshots.
+  - **Templates:** `templates/desktop-steps.notepad.json` and `desktop-steps.claude-desktop.json`. Guide: `docs/DESKTOP-CONTROL.md`. Installer extras add `mss` and `pillow`.
+  - **Tests:** `tests/test_desktop.py` (mocked), plus opt-in live tests: Notepad (`SMEKIT_DESKTOP_SMOKE=1`) and Claude Desktop (`SMEKIT_DESKTOP_CLAUDE=1`).
 - **`/qa-issue`** (#11): an agent files a ShipShape bug or gap from any session. It collects the title, what happened, expected, environment, logs and an optional video link, masks and scans the body with `privacy.py`, shows a dry-run preview, and runs `gh issue create -R <issues.repo> --label from-field --body-file ...` only after the user says yes. New config key `issues.repo` (default `Shadysmetools/shipshape`). The hook guard now routes `gh issue create` to the user's permission prompt (`ask`); tests in `tests/test_eval_fixes.py`.
 - **Team install and update flow** (#9): `docs/TEAM-SETUP.md` covers the fork or `#ref` branch, the version bump that updates need, auto-update (off by default), `claude plugin update`, pulling upstream, and customising without conflicts. New `CONTRIBUTING.md`. The marketplace entry no longer repeats `version` (it lives in `plugin.json` only, as the plugin docs require); a test guards it.
 - **Packaging for sale, draft** (#10): `docs/FOR-BUYERS.md` (what it does, client install, support boundaries, a placeholder tier table, what stays internal, and the rule that ShipShape provides no keys or third-party accounts) and `LICENSE-OPTIONS.md` (proprietary vs BSL vs MIT vs Apache-2.0). No license is chosen: the owner decides. README links "For buyers".
