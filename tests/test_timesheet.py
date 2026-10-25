@@ -131,3 +131,160 @@ def test_end_to_end_workbook(tmp_path):
     lines = json.loads((tmp_path / "ts-analytic-lines.json").read_text())
     assert lines["write_status"].startswith("NOT WRITTEN")
     assert lines["rows"][0]["unit_amount"] == pytest.approx(1.25)
+
+
+# ---------------------------------------------------------------- human-equivalent mode (issue #5)
+RATES = {
+    "rule": "Bill what an Odoo tester would spend.",
+    "block_minimum_minutes": 15,
+    "activities": {
+        "scenario": {"label": "scenario run", "minutes": 10, "source": "tool", "tool": "^Bash$", "match": ["record\\.py|pytest"]},
+        "step": {"label": "UI step", "minutes": 1, "source": "tool", "tool": "browser_(click|type|navigate)"},
+        "bug": {"label": "bug filed", "minutes": 15, "source": "tool", "tool": ".", "match": ["gh issue create"]},
+        "file": {"label": "file changed", "minutes": 5, "source": "file", "tool": "^(Edit|Write)$"},
+        "commit": {"label": "commit", "minutes": 5, "source": "commit"},
+        "meeting": {"label": "meeting", "minutes": 30, "source": "request", "match": ["meeting"]},
+    },
+    "task_multiplier": {"2": 2},
+}
+
+
+def tool(sec, name, **inp):
+    return {"type": "assistant", "timestamp": iso(sec), "message": {"role": "assistant", "content": [
+        {"type": "text", "text": "working"}, {"type": "tool_use", "id": f"t{sec}", "name": name, "input": inp}]}}
+
+
+def test_default_rates_template_is_valid():
+    rates = ts.load_rates(ts.DEFAULT_RATES)
+    assert rates["rule"] and {"scenario", "step", "bug", "file", "commit", "meeting"} <= set(rates["activities"])
+
+
+def test_human_block_counts_every_activity(tmp_path):
+    p = tmp_path / "a.jsonl"
+    rows = [tool(0, "Bash", command="python scripts/record.py plans/login.json"), tool(60, "Bash", command="pytest -q"),
+            tool(120, "Bash", command="ls")]                                      # ls is not a scenario
+    rows += [tool(180 + i * 10, "mcp__playwright__browser_click", element=f"button {i}") for i in range(5)]
+    rows += [tool(240 + i, "Bash", command="pytest -q") for i in range(6)]       # the agent re-running: counts once
+    rows += [tool(300, "Bash", command="gh issue create -t \"Save button does nothing\"")]
+    rows += [tool(400, "Edit", file_path="a.py"), tool(410, "Edit", file_path="a.py"), tool(420, "Write", file_path="b.py")]
+    write_jsonl(str(p), rows[::-1])
+    acts = ts.read_actions(str(p))
+    assert [x[0] for x in acts] == sorted(x[0] for x in acts)
+    b = {"actions": acts, "commit_subjects": ["fix save"], "prompts_text": ["join the meeting notes", "run it"]}
+    assert ts.count_activities(b, RATES) == {"scenario": 2, "step": 5, "bug": 1, "file": 2, "commit": 1, "meeting": 1}
+    minutes, why = ts.human_block(b, RATES)
+    assert minutes == 2 * 10 + 5 * 1 + 15 + 2 * 5 + 5 + 30
+    assert "2 scenario run x 10" in why and why.endswith("= 85 min")
+
+
+def test_human_block_minimum_applies_only_when_something_was_done():
+    minutes, why = ts.human_block({"actions": [], "commit_subjects": ["one commit"], "prompts_text": []}, RATES)
+    assert minutes == 15 and why == "1 commit x 5 = 5 min -> block minimum 15 min"
+    assert ts.human_block({"actions": [], "commit_subjects": [], "prompts_text": ["hi"]}, RATES) == (0, "no counted activity: 0 min")
+
+
+def test_distinct_false_counts_every_repeat():
+    rates = {"activities": {"run": {"minutes": 2, "source": "tool", "tool": "Bash", "distinct": False}}}
+    b = {"actions": [(0, "Bash", '{"command": "pytest"}', None)] * 3}
+    assert ts.count_activities(b, rates) == {"run": 3}
+    rates["activities"]["run"].pop("distinct")
+    assert ts.count_activities(b, rates) == {"run": 1}
+
+
+@pytest.mark.parametrize("bad,msg", [({"activities": {}}, "non-empty"),
+                                     ({"activities": {"x": {"minutes": -1, "source": "tool"}}}, "activities.x.minutes"),
+                                     ({"activities": {"x": {"minutes": 1, "source": "guess"}}}, "activities.x.source"),
+                                     ({"activities": {"x": {"minutes": 1, "source": "tool", "tool": "("}}}, "bad regex")])
+def test_bad_rates_file_stops_with_one_line(tmp_path, bad, msg):
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps(bad))
+    with pytest.raises(SystemExit) as e:
+        ts.load_rates(str(p))
+    assert msg in str(e.value)
+
+
+def _human_fixture(tmp_path):
+    """Two tasks. Login: a 50-min agent block with 1 scenario + 3 UI steps + 1 bug.
+    Checkout (complexity 2): a 30-min block that changed 2 files. Then a timesheet-admin block."""
+    proj = tmp_path / "proj"
+    sid = "22222222-aaaa-bbbb-cccc-000000000002"
+    main = [line(0, "user", "test the login page")] + [line(m * 60) for m in range(5, 51, 5)]
+    main += [tool(600, "Bash", command="python scripts/record.py plans/login.json")]
+    main += [tool(700 + i, "mcp__playwright__browser_type", text=f"field {i}") for i in range(3)]
+    main += [tool(900, "Bash", command="gh issue create -t \"login error\"")]
+    t2 = 2 * 3600
+    main += [line(t2, "user", "fix the checkout total")] + [line(t2 + m * 60) for m in range(5, 31, 5)]
+    main += [tool(t2 + 300, "Edit", file_path="cart.py"), tool(t2 + 400, "Edit", file_path="total.py")]
+    t3 = 4 * 3600
+    main += [line(t3, "user", "prepare my timesheet")] + [line(t3 + m * 60) for m in range(5, 21, 5)]
+    main += [tool(t3 + 300, "Bash", command="pytest -q")]                 # excluded block: never billed
+    write_jsonl(str(proj / f"{sid}.jsonl"), main[::-1])
+    tasks = {"project": {"id": 100, "name": "Demo project"}, "employee": {"id": 7, "name": "Test Developer"},
+             "tasks": [{"id": 1, "name": "Login page", "match": ["login"]}, {"id": 2, "name": "Checkout", "match": ["checkout"]}],
+             "exclude": ["timesheet"]}
+    tf = tmp_path / "tasks.json"
+    tf.write_text(json.dumps(tasks))
+    rf = tmp_path / "rates.json"
+    rf.write_text(json.dumps(RATES))
+    cf = tmp_path / "qa.config.yaml"
+    cf.write_text("timesheet:\n  mode: human\n  rule: Team rule - bill tester time, not agent time\n")
+    lk = tmp_path / "lookup.json"
+    lk.write_text(json.dumps({"employees": [{"id": 7, "name": "Test Developer"}]}))
+    ex = tmp_path / "existing.json"
+    ex.write_text("[]")
+    base = ["--project-dir", str(proj), "--tasks", str(tf), "--rates", str(rf), "--tz", "+00:00", "--gap", "20",
+            "--lookup", str(lk), "--existing", str(ex)]
+    return base, cf
+
+
+def test_human_mode_books_human_figure_with_reasoning(tmp_path):
+    base, cf = _human_fixture(tmp_path)
+    out = tmp_path / "human.xlsx"
+    assert ts.main(base + ["--config", str(cf), "--out", str(out)]) == 0   # mode comes from timesheet.mode
+    wb = load_workbook(out)
+    assert wb.sheetnames == ["Summary", "Daily", "Sessions", "Evidence", "Method", "Checks", "Odoo Import"]
+    # login: 10 + 3 + 15 = 28 min -> 0.5 h; checkout: 2 files x 5 = 10 -> minimum 15 x complexity 2 = 30 min -> 0.5 h
+    imp = {r[3]: r[7] for r in wb["Odoo Import"].iter_rows(min_row=2, values_only=True)}
+    assert imp == {1: pytest.approx(0.5), 2: pytest.approx(0.5)}
+    hdr = [c.value for c in wb["Daily"][1]]
+    assert hdr[3:7] == ["Measured hours", "Human-equivalent hours", "Booked hours", "Human-equivalent reasoning"]
+    daily = {r[1]: r for r in wb["Daily"].iter_rows(min_row=2, values_only=True)}
+    assert daily[1][3] == pytest.approx(50 / 60, abs=0.01) and daily[1][4] == pytest.approx(28 / 60, abs=0.01)
+    assert "1 scenario run x 10 + 3 UI step x 1 + 1 bug filed x 15 = 28 min" in daily[1][6]
+    assert "block minimum 15 min x complexity 2 = 0.50 h" in daily[2][6]
+    checks = {r[0]: r[1] for r in wb["Checks"].iter_rows(min_row=2, values_only=True)}
+    assert all(v == "PASS" for v in checks.values()), checks
+    assert "Every human-equivalent row has its reasoning" in checks
+    method = "\n".join(r[0] or "" for r in wb["Method"].iter_rows(min_row=2, values_only=True))
+    assert "Team rule - bill tester time, not agent time" in method and "scenario (scenario run): 10 min each" in method
+    summary = {r[0]: r for r in wb["Summary"].iter_rows(min_row=2, values_only=True)}
+    assert summary["Mode"][1].startswith("human") and summary["Rule"][1].startswith("Team rule")
+    assert summary["TOTAL"][2] == pytest.approx(1.0) and summary["TOTAL"][3] == pytest.approx(80 / 60, abs=0.01)
+    ev = list(wb["Evidence"].iter_rows(min_row=2, values_only=True))
+    assert ev[-1][4] == "excluded" and ev[-1][6] == "excluded: not billed"
+    lines = json.loads((tmp_path / "human-analytic-lines.json").read_text())
+    assert lines["hours_basis"] == "human-equivalent" and lines["write_status"].startswith("NOT WRITTEN")
+    assert sorted(r["unit_amount"] for r in lines["rows"]) == [0.5, 0.5]
+
+
+def test_measured_mode_imports_measured_but_shows_both(tmp_path):
+    base, _ = _human_fixture(tmp_path)
+    out = tmp_path / "measured.xlsx"
+    assert ts.main(base + ["--out", str(out)]) == 0
+    wb = load_workbook(out)
+    imp = {r[3]: r[7] for r in wb["Odoo Import"].iter_rows(min_row=2, values_only=True)}
+    assert imp == {1: pytest.approx(0.75), 2: pytest.approx(0.5)}            # 50 and 30 measured minutes on the grid
+    daily = {r[1]: r for r in wb["Daily"].iter_rows(min_row=2, values_only=True)}
+    assert daily[1][4] == pytest.approx(28 / 60, abs=0.01) and daily[1][6]  # human figure + reasoning still shown
+    assert json.loads((tmp_path / "measured-analytic-lines.json").read_text())["hours_basis"] == "measured"
+
+
+def test_cli_mode_overrides_config_and_bad_config_mode_fails(tmp_path):
+    base, cf = _human_fixture(tmp_path)
+    out = tmp_path / "m.xlsx"
+    assert ts.main(base + ["--config", str(cf), "--mode", "measured", "--out", str(out)]) == 0
+    assert json.loads((tmp_path / "m-analytic-lines.json").read_text())["hours_basis"] == "measured"
+    cf.write_text("timesheet:\n  mode: guess\n")
+    with pytest.raises(SystemExit) as e:
+        ts.main(base + ["--config", str(cf), "--out", str(out)])
+    assert "timesheet.mode" in str(e.value)
