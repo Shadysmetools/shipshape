@@ -2,7 +2,7 @@
  "name": "Claude Desktop: type into the chat input, check it, clear it. Nothing is sent.",
  "steps": [
   {"do": "launch", "app": "Claude", "timeout": 40, "settle": 3, "shot": false, "say": "Open Claude Desktop, or bring it forward."},
-  {"do": "mask", "outside_control": {"role": "Edit", "name": "Write your prompt to Claude"}, "pad": 14, "timeout": 30, "say": "Hide everything except the message box: chats stay private."},
+  {"do": "mask", "timeout": 30, "regions": [{"control": {"role": "Group", "name": "Sidebar", "largest": true}}, {"control": {"role": "List"}, "optional": true}], "say": "Blur only the private parts: the chat list, the account and recent items. The app stays visible."},
   {"do": "record_start"},
   {"do": "screenshot", "case": "CD-01", "name": "claude-window"},
   {"do": "assert_text", "case": "CD-02", "name": "input-starts-empty", "control": {"role": "Edit", "name": "Write your prompt to Claude"}, "equals": "", "stop_on_fail": true, "say": "The message box is empty, so no draft of yours is touched."},

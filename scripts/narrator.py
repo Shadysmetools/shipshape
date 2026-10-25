@@ -282,9 +282,24 @@ def has_audio(video):
     return bool(out)
 
 
-def mix_cmd(video, clips, out, duck=True, video_has_audio=None):
-    """ffmpeg command: narration clips placed at their times; the video's own audio
-    is ducked under the narration (sidechaincompress) when it has an audio track."""
+def schedule(starts, durations, gap=0.3):
+    """Non-overlapping (start, end) for each clip: a line never starts before the previous one has
+    finished (+ gap). One narrator at a time, however close together the steps ran."""
+    out, end = [], 0.0
+    for t, d in zip(starts, durations):
+        t = max(float(t), end + gap if out else float(t))
+        out.append((round(t, 3), round(t + float(d), 3)))
+        end = t + float(d)
+    return out
+
+
+def mix_cmd(video, clips, out, duck=True, video_has_audio=None, pad=0.0):
+    """ffmpeg command: narration clips placed at their times; the video's own audio is ducked under the
+    narration (sidechaincompress) when it has an audio track. clips: (t, path) or (t, path, seconds); with
+    seconds the clips are scheduled so they never overlap. pad: seconds of the last frame held at the end so
+    the last line is not cut. The output always has exactly one audio stream."""
+    if clips and all(len(c) == 3 for c in clips):
+        clips = [(a, p) for (a, _b), (_t, p, _d) in zip(schedule([c[0] for c in clips], [c[2] for c in clips]), clips)]
     vha = has_audio(video) if video_has_audio is None else video_has_audio
     args = ["ffmpeg", "-y", "-v", "error", "-i", video]
     for _t, p in clips:
@@ -294,11 +309,18 @@ def mix_cmd(video, clips, out, duck=True, video_has_audio=None):
     if vha and duck:
         parts.append("[narr]asplit=2[narr1][sc]")
         parts.append("[0:a][sc]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=400[duck]")
-        parts.append("[duck][narr1]amix=inputs=2:normalize=0[aout]")
+        parts.append("[duck][narr1]amix=inputs=2:normalize=0:duration=longest[aout]")
         amap = "[aout]"
     else:
         amap = "[narr]"
-    args += ["-filter_complex", ";".join(parts), "-map", "0:v", "-map", amap, "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", out]
+    parts.append(f"{amap}apad[afull]")  # silence to the end: the video, not the narration, sets the length
+    amap = "[afull]"
+    if pad > 0:
+        parts.append(f"[0:v]tpad=stop_mode=clone:stop_duration={pad:.2f}[vout]")
+        vmap, vcodec = "[vout]", ["-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p"]
+    else:
+        vmap, vcodec = "0:v", ["-c:v", "copy"]
+    args += ["-filter_complex", ";".join(parts), "-map", vmap, "-map", amap, *vcodec, "-c:a", "aac", "-b:a", "128k", "-shortest", out]
     return args
 
 
@@ -348,10 +370,12 @@ def main(argv=None):
             print(f"wrote {os.path.splitext(out)[0]}.srt only (no voice available this time)")
         return 0
     lines = json.load(open(a.lines, encoding="utf-8"))
-    clips = [(x["t"], say(x["text"], lang, profile=voice, notes=notes)[0]) for x in lines]
+    clips = [(x["t"], *say(x["text"], lang, profile=voice, notes=notes)) for x in lines]
     out = a.out or os.path.splitext(a.target)[0] + "-narrated.mp4"
-    subprocess.run(mix_cmd(a.target, clips, out), check=True, timeout=900)
-    srt([(x["t"], x["t"] + 3, x["text"]) for x in lines], os.path.splitext(out)[0] + ".srt")
+    times = schedule([c[0] for c in clips], [c[2] for c in clips])
+    pad = max(0.0, times[-1][1] + 0.5 - (tts.duration(a.target) or 0.0)) if times else 0.0
+    subprocess.run(mix_cmd(a.target, clips, out, pad=pad), check=True, timeout=900)
+    srt([(s0, e0, x["text"]) for (s0, e0), x in zip(times, lines)], os.path.splitext(out)[0] + ".srt")
     print("wrote", out)
     return 0
 
