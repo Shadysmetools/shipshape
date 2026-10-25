@@ -3,16 +3,27 @@
 and mixes the narration under a video (the video's own audio is ducked while
 the narrator speaks).
 
-    python scripts/narrator.py report <run_dir> [--lang en|ar] [--out summary.mp3]   # spoken summary of a run
-    python scripts/narrator.py mix <video.mp4> <lines.json> --out narrated.mp4         # lines: [{"t": 1.5, "text": "..."}]
-    python scripts/narrator.py voices                                                 # the configured voices
+    python scripts/narrator.py report <run_dir> [--lang en|ar] [--voice <profile>] [--out summary.mp3]  # spoken summary of a run
+    python scripts/narrator.py mix <video.mp4> <lines.json> [--voice <profile>] --out narrated.mp4      # lines: [{"t": 1.5, "text": "..."}]
+    python scripts/narrator.py voices [--config qa.config.yaml]                                         # the configured voice profiles
 
-Providers (pick with SMEKIT_TTS_PROVIDER or qa.config.yaml narrator.provider):
+Voice profiles (qa.config.yaml), picked with --voice <profile> or narrator.default_voice:
+
+    narrator:
+      default_voice: narrator
+      voices:
+        narrator: {provider: edge, voice: en-US-AndrewNeural, lang: en}
+        sara: {provider: elevenlabs, voice: {env: ELEVENLABS_VOICE_ID_SARA}, lang: ar}
+
+Providers:
   edge        default, free, no key: Microsoft neural voices through edge-tts
   openai      needs OPENAI_API_KEY (model gpt-4o-mini-tts or tts-1)
-  elevenlabs  needs ELEVENLABS_API_KEY and a voice id
-Keys come from env vars only. Voices per language are in VOICES and can be
-overridden per project (narrator.voice, narrator.rate, narrator.lang).
+  elevenlabs  needs ELEVENLABS_API_KEY and a voice id (literal, or {env: NAME} looked up through keys.py)
+API keys come only through keys.py (env var, keychain or the user store; asked for once when missing).
+If a paid provider refuses (no key, HTTP 402 "paid plan required", offline), the line is spoken by the free
+edge voice for the profile's language, with one warning line; the reason is kept as the narration note.
+Without profiles: SMEKIT_TTS_PROVIDER or narrator.provider, and ELEVENLABS_VOICE_ID, as before.
+Only use a cloned voice whose owner agreed to it being used.
 """
 from __future__ import annotations
 
@@ -22,6 +33,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -42,24 +54,139 @@ PHRASES = {
 }
 
 
-def provider():
-    return os.environ.get("SMEKIT_TTS_PROVIDER", "edge")
+PROVIDERS = ("edge", "openai", "elevenlabs")
+API_KEY = {"openai": "OPENAI_API_KEY", "elevenlabs": "ELEVENLABS_API_KEY"}
+_REFUSED = {}  # (provider, voice id) -> note: a refused paid voice is not called again in this process
 
 
-def say(text, lang="en", voice=None, rate="-5%", prov=None):
-    """Return (mp3 path, seconds). Falls back to edge-tts if a paid provider has no key."""
-    prov = prov or provider()
-    # A paid provider was chosen on purpose: a missing key is asked for once (masked window), then saved.
-    if prov == "openai" and keys.get("OPENAI_API_KEY", "Chosen narrator voice provider: OpenAI."):
-        return _http_tts(text, "openai", voice or VOICES[lang]["openai"])
-    if prov == "elevenlabs" and keys.get("ELEVENLABS_API_KEY", "Chosen narrator voice provider: ElevenLabs.") \
-            and (voice or keys.get("ELEVENLABS_VOICE_ID", "Which ElevenLabs voice should narrate?")):
-        return _http_tts(text, "elevenlabs", voice or keys.lookup("ELEVENLABS_VOICE_ID"))
-    p, d, _ = tts.speak(text, voice or VOICES.get(lang, VOICES["en"])["edge"], rate)
+class VoiceError(Exception):
+    """A --voice / narrator.voices problem the user must fix; the message is one readable line."""
+
+
+def provider(cfg=None):
+    return (os.environ.get("SMEKIT_TTS_PROVIDER") or ((cfg or {}).get("narrator") or {}).get("provider") or "edge").lower()
+
+
+def load_config(path="qa.config.yaml"):
+    """The project config, or {} when there is none. A broken file is a VoiceError (one line)."""
+    if not path or not os.path.exists(path):
+        return {}
+    import notify
+    try:
+        return notify.load_config(path)
+    except notify.ConfigError as exc:
+        raise VoiceError(str(exc)) from None
+
+
+def profiles(cfg):
+    voices = ((cfg or {}).get("narrator") or {}).get("voices") or {}
+    if not isinstance(voices, dict):
+        raise VoiceError("config error at narrator.voices: expected a mapping of profile names")
+    return voices
+
+
+def resolve(name=None, cfg=None, lang=None):
+    """The voice to narrate with: --voice beats narrator.default_voice, which beats the legacy settings.
+    Returns {"profile", "provider", "voice", "lang", "rate"}. The voice id may still be an {env: NAME} spec."""
+    nar = (cfg or {}).get("narrator") or {}
+    voices = profiles(cfg)
+    name = name or nar.get("default_voice")
+    rate = str(nar.get("rate") or "-5%")
+    if not name:
+        prov = provider(cfg)
+        lang = lang or nar.get("lang") or "en"
+        return {"profile": None, "provider": prov, "voice": (nar.get("voice") or os.environ.get("SMEKIT_VOICE")) if prov == "edge" else None, "lang": lang, "rate": rate}
+    if name not in voices:
+        known = ", ".join(sorted(voices)) or "none (add narrator.voices to qa.config.yaml)"
+        raise VoiceError(f"unknown voice profile {name!r}; profiles: {known}")
+    spec = voices[name]
+    if isinstance(spec, str):
+        spec = {"provider": "edge", "voice": spec}
+    if not isinstance(spec, dict):
+        raise VoiceError(f"config error at narrator.voices.{name}: expected {{provider, voice, lang}}")
+    prov = str(spec.get("provider") or "edge").lower()
+    if prov not in PROVIDERS:
+        raise VoiceError(f"config error at narrator.voices.{name}.provider: expected one of {', '.join(PROVIDERS)}, got {prov!r}")
+    vid = spec.get("voice")
+    if isinstance(vid, dict) and not (len(vid) == 1 and isinstance(vid.get("env"), str)):
+        raise VoiceError(f"config error at narrator.voices.{name}.voice: expected a voice id or {{env: NAME}}")
+    return {"profile": name, "provider": prov, "voice": vid, "lang": spec.get("lang") or lang or nar.get("lang") or "en",
+            "rate": str(spec.get("rate") or rate)}
+
+
+def _voice_id(v):
+    """The provider's voice id for a resolved voice: literal, {env: NAME} through keys.py, or the defaults."""
+    vid, label = v.get("voice"), v.get("profile") or v["provider"]
+    if isinstance(vid, dict):
+        return keys.get(vid["env"], f"ElevenLabs voice id for the voice profile '{label}'.")
+    if vid:
+        return str(vid)
+    if v["provider"] == "openai":
+        return VOICES.get(v["lang"], VOICES["en"])["openai"]
+    if v["provider"] == "elevenlabs":
+        return keys.get("ELEVENLABS_VOICE_ID", "Which ElevenLabs voice should narrate?")
+    return None
+
+
+def _refusal(prov, exc):
+    if isinstance(exc, urllib.error.HTTPError):
+        why = {402: "paid plan required", 401: "key not accepted", 403: "not allowed for this key",
+               429: "rate limit or quota reached"}.get(exc.code, "refused")
+        return f"{prov} refused: HTTP {exc.code} ({why})"
+    if isinstance(exc, RuntimeError):
+        return str(exc)
+    return f"{prov} not reachable ({type(exc).__name__})"
+
+
+_WARNED = set()
+
+
+def _fallback(text, note, lang, rate):
+    """Speak with the free edge voice for the language; warn once per reason."""
+    edge = VOICES.get(lang, VOICES["en"])["edge"]
+    note = f"{note}; spoken by the free edge voice {edge}"
+    if note not in _WARNED:
+        _WARNED.add(note)
+        print(f"[narrator] {note}")
+    p, d, _ = tts.speak(text, edge, rate)
+    return p, d, note
+
+
+def speak(text, v):
+    """Speak one line with a resolved voice. Returns (mp3 path, seconds, note); note is None when the chosen
+    voice was used, else why the free edge voice spoke instead. Raises RuntimeError only if edge fails too."""
+    prov, lang = v["provider"], v.get("lang") or "en"
+    rate = v.get("rate") or "-5%"
+    if prov not in API_KEY:
+        p, d, _ = tts.speak(text, v.get("voice") or VOICES.get(lang, VOICES["en"])["edge"], rate)
+        return p, d, None
+    label = f"voice profile '{v['profile']}'" if v.get("profile") else f"{prov} voice"
+    if not keys.get(API_KEY[prov], f"Chosen narrator voice provider: {prov}."):
+        return _fallback(text, f"{label}: no {API_KEY[prov]} (save it with keys.py set {API_KEY[prov]})", lang, rate)
+    vid = _voice_id(v)
+    if not vid:
+        return _fallback(text, f"{label}: no {prov} voice id", lang, rate)
+    if (prov, vid) not in _REFUSED:
+        try:
+            p, d = _http_tts(text, prov, vid)
+            return p, d, None
+        except (urllib.error.URLError, OSError, RuntimeError, ValueError) as exc:
+            _REFUSED[(prov, vid)] = f"{label}: {_refusal(prov, exc)}"
+    return _fallback(text, _REFUSED[(prov, vid)], lang, rate)
+
+
+def say(text, lang="en", voice=None, rate="-5%", prov=None, profile=None, notes=None):
+    """Return (mp3 path, seconds). profile: a resolve() result; otherwise the legacy provider/voice.
+    A paid provider without a key or that refuses falls back to edge-tts; the reason goes into notes."""
+    v = profile or {"profile": None, "provider": prov or provider(), "voice": voice, "lang": lang, "rate": rate}
+    p, d, note = speak(text, v)
+    if note and notes is not None and note not in notes:
+        notes.append(note)
     return p, d
 
 
-def _http_tts(text, prov, voice, urlopen=urllib.request.urlopen):
+def _http_tts(text, prov, voice, urlopen=None):
+    urlopen = urlopen or urllib.request.urlopen
     os.makedirs(tts.CACHE, exist_ok=True)
     path = os.path.join(tts.CACHE, hashlib.sha1(f"{prov}\n{voice}\n{text}".encode()).hexdigest() + ".mp3")
     if os.path.exists(path) and tts.duration(path):
@@ -118,14 +245,14 @@ def srt(entries, path):
             fh.write(f"{n}\n{ts(a)} --> {ts(b)}\n{t}\n\n")
 
 
-def narrate_lines(lines, out_mp3, lang="en", gap=0.4):
+def narrate_lines(lines, out_mp3, lang="en", gap=0.4, profile=None, notes=None):
     """Speak lines back to back into one mp3 + srt. Returns the srt entries.
     If no voice can be made (offline, provider down) the .srt is still written,
     one warning is printed and the entries come back with estimated timings."""
     clips, t, entries, missed = [], 0.0, [], 0
     for line in lines:
         try:
-            p, d = say(line, lang)
+            p, d = say(line, lang, profile=profile, notes=notes)
         except (RuntimeError, OSError) as exc:
             missed += 1
             d = max(2.0, 0.4 * len(line.split()))  # a reading-speed estimate keeps the captions usable
@@ -175,31 +302,53 @@ def mix_cmd(video, clips, out, duck=True, video_has_audio=None):
     return args
 
 
+def describe(cfg):
+    """The configured profiles, without resolving {env: NAME} (no key or id is looked up or printed)."""
+    out = {}
+    for name in sorted(profiles(cfg)):
+        v = resolve(name, cfg)
+        vid = v["voice"]
+        out[name] = {"provider": v["provider"], "lang": v["lang"],
+                     "voice": f"from {vid['env']}" if isinstance(vid, dict) else (vid or "default for the language")}
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=("report", "mix", "voices"))
     ap.add_argument("target", nargs="?")
     ap.add_argument("lines", nargs="?")
-    ap.add_argument("--lang", default="en", choices=("en", "ar"))
+    ap.add_argument("--lang", choices=("en", "ar"), help="default: the profile's language, else en")
+    ap.add_argument("--voice", help="a voice profile from narrator.voices (default: narrator.default_voice)")
+    ap.add_argument("--config", default="qa.config.yaml")
     ap.add_argument("--out")
     a = ap.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
+    try:
+        cfg = load_config(a.config)
+        voice = resolve(a.voice, cfg, a.lang)
+    except VoiceError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    lang = a.lang or voice["lang"]
     if a.cmd == "voices":
-        print(json.dumps({"provider": provider(), "voices": VOICES}, ensure_ascii=False, indent=1))
+        print(json.dumps({"default_voice": ((cfg.get("narrator") or {}).get("default_voice")), "profiles": describe(cfg),
+                          "provider_without_profile": provider(cfg), "builtin": VOICES}, ensure_ascii=False, indent=1))
         return 0
+    notes = []
     if a.cmd == "report":
         if not os.path.isdir(a.target or ""):
             print(f"ERROR: run folder not found: {a.target}")
             return 2
-        out = a.out or os.path.join(a.target, f"summary-{a.lang}.mp3")
-        entries = narrate_lines(report_lines(a.target, a.lang), out, a.lang)
+        out = a.out or os.path.join(a.target, f"summary-{lang}.mp3")
+        entries = narrate_lines(report_lines(a.target, lang), out, lang, profile=voice, notes=notes)
         if os.path.exists(out):
             print(f"wrote {out} ({entries[-1][1]:.1f}s) and {os.path.splitext(out)[0]}.srt")
         else:
             print(f"wrote {os.path.splitext(out)[0]}.srt only (no voice available this time)")
         return 0
     lines = json.load(open(a.lines, encoding="utf-8"))
-    clips = [(x["t"], say(x["text"], a.lang)[0]) for x in lines]
+    clips = [(x["t"], say(x["text"], lang, profile=voice, notes=notes)[0]) for x in lines]
     out = a.out or os.path.splitext(a.target)[0] + "-narrated.mp4"
     subprocess.run(mix_cmd(a.target, clips, out), check=True, timeout=900)
     srt([(x["t"], x["t"] + 3, x["text"]) for x in lines], os.path.splitext(out)[0] + ".srt")

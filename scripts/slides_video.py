@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Build a narrated explainer / evidence video from screenshots and text cards.
 
-    python scripts/slides_video.py scenes.json --out out.mp4 [--voice en-US-AndrewNeural]
+    python scripts/slides_video.py scenes.json --out out.mp4 [--voice <profile> | --voice en-US-AndrewNeural]
+
+--voice is a voice profile from narrator.voices in qa.config.yaml (default: narrator.default_voice);
+any other value is used as an edge-tts voice name, as before.
 
 Use it when the evidence is screenshots (for example from a signed-in Chrome via
 Chrome DevTools MCP, or Odoo screens) rather than a live recording. Pipeline:
@@ -28,10 +31,12 @@ import html
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import narrator  # noqa: E402
 import tts  # noqa: E402
 
 W, H, XF = 1920, 1080, 0.6
@@ -76,8 +81,20 @@ def run(cmd):
     subprocess.run(cmd, check=True, timeout=900)
 
 
-def build(spec, out, voice=tts.VOICE, workdir=None, base=None):
+def voice_for(arg, cfg):
+    """--voice: a configured profile name, or a raw edge-tts voice name such as en-US-AndrewNeural (as before);
+    None = the project default. Anything else is an unknown profile (VoiceError)."""
+    if arg and arg not in narrator.profiles(cfg) and re.match(r"^[a-z]{2,3}-[A-Z]{2,4}-\w+Neural$", arg):
+        return {"profile": None, "provider": "edge", "voice": arg, "lang": "en", "rate": "-5%"}
+    return narrator.resolve(arg, cfg)
+
+
+def build(spec, out, voice=None, workdir=None, base=None):
+    """voice: a narrator.resolve() result, an edge-tts voice name, or None (the project default)."""
     from playwright.sync_api import sync_playwright
+
+    if not isinstance(voice, dict):
+        voice = voice_for(voice, narrator.load_config())
 
     out = pathlib.Path(out)
     base = pathlib.Path(base or ".")
@@ -88,7 +105,8 @@ def build(spec, out, voice=tts.VOICE, workdir=None, base=None):
     for si, sc in enumerate(spec["scenes"]):
         for line in sc["lines"]:
             items.append((len(items), si, line, scene_html(sc, base)))
-    audio = {i: tts.speak(line, voice) for i, _, line, _ in items}
+    audio = {i: narrator.speak(line, voice) for i, _, line, _ in items}  # (mp3, seconds, fallback note)
+    notes = sorted({a[2] for a in audio.values() if a[2]})
     with sync_playwright() as p:
         br = p.chromium.launch()
         pg = br.new_page(viewport={"width": W, "height": H})
@@ -137,19 +155,28 @@ def build(spec, out, voice=tts.VOICE, workdir=None, base=None):
              "-movflags", "+faststart", str(out)]
     run(args)
     out.with_suffix(".srt").write_text("\n".join(f"{n + 1}\n{srt_time(a)} --> {srt_time(b)}\n{t}\n" for n, (a, b, t) in enumerate(srt)), encoding="utf-8")
-    return {"scenes": len(scenes), "lines": len(items), "duration": tts.duration(str(out)), "srt": str(out.with_suffix(".srt"))}
+    return {"scenes": len(scenes), "lines": len(items), "duration": tts.duration(str(out)), "srt": str(out.with_suffix(".srt")),
+            "voice": voice.get("profile"), "narration_note": "; ".join(notes) or None}
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("scenes")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--voice", default=tts.VOICE)
+    ap.add_argument("--voice", help="voice profile from narrator.voices (or an edge-tts voice name)")
+    ap.add_argument("--config", default="qa.config.yaml")
     a = ap.parse_args(argv)
+    try:
+        voice = voice_for(a.voice, narrator.load_config(a.config))
+    except narrator.VoiceError as exc:
+        print(f"ERROR: {exc}")
+        return 2
     spec = json.load(open(a.scenes, encoding="utf-8"))
-    info = build(spec, a.out, a.voice, base=os.path.dirname(os.path.abspath(a.scenes)))
-    print(f"scenes={info['scenes']} lines={info['lines']} duration={info['duration']:.1f}s srt={info['srt']}")
+    info = build(spec, a.out, voice, base=os.path.dirname(os.path.abspath(a.scenes)))
+    print(f"scenes={info['scenes']} lines={info['lines']} duration={info['duration']:.1f}s srt={info['srt']}"
+          + (f" voice-note={info['narration_note']}" if info["narration_note"] else ""))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
