@@ -54,6 +54,11 @@ def b64(path, mime):
         return f"data:{mime};base64," + base64.b64encode(fh.read()).decode()
 
 
+def mmss(sec):
+    sec = int(round(sec or 0))
+    return f"{sec // 60}:{sec % 60:02d}"
+
+
 def chip(result):
     cls = result.split()[0]
     return f'<span class="r {cls}">{E(result)}</span>'
@@ -113,6 +118,14 @@ def build(run_dir, root=None, embed_video=False):
             if narr:
                 badges = " · ".join(f"pass {i + 1}: {E(n if n == 'voice' else 'no voice (' + str(n) + ')')}" for i, n in enumerate(narr))
                 parts.append(f'<p class="muted">Narration: {badges}</p>')
+            vs = run.get("video_seconds")
+            if vs:
+                orig = f' · original kept: <a href="{E(run["dir"] + "/" + vs["original"])}">{E(vs["original"])}</a>' if vs.get("original") else ""
+                over = ' · <b class="r FAIL">over cap</b>' if vs.get("over_cap") else ""
+                parts.append(f'<p class="muted">Length: original {mmss(vs["original_seconds"])} → final {mmss(vs["final_seconds"])} '
+                             f'(cap {mmss(vs["cap_seconds"])}, {E(str(vs.get("type")))}){over}{orig}</p>')
+            elif run.get("video_note"):
+                parts.append(f'<p class="muted">Length: {E(run["video_note"])}</p>')
             vid = run.get("video")
             vpath = os.path.join(d, vid) if vid else None
             if vpath and os.path.exists(vpath) and vpath.endswith(".mp4"):
@@ -164,6 +177,11 @@ def build(run_dir, root=None, embed_video=False):
     if gates:
         parts.append("<h2 style='margin-top:16px'>Human gates</h2><ul>" + "".join(
             f"<li>{E(g['id'])} {'OPEN' if g.get('open') else 'closed'}: {E(g['reason'])}</li>" for g in gates) + "</ul>")
+    consults = led.get("consults", [])
+    if consults:
+        parts.append("<h2 style='margin-top:16px'>Questions asked to other agents</h2><ul>" + "".join(
+            f"<li>{E(c['id'])} {E(c['agent'])}{' (' + E(c['bug']) + ')' if c.get('bug') else ''}: "
+            f"<b>{E(c['question'])}</b> &rarr; {E(c['answer'])}</li>" for c in consults) + "</ul>")
     parts.append("</section>")
     parts.append(f"<section><h2>Trend across runs</h2>{trend_svg(hist['trend'])}")
     if hist["flaky"]:

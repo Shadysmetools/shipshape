@@ -30,14 +30,14 @@ Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE
 |---|---|---|
 | Goal loop | Plans, runs, verifies, refutes, files bugs and re-tests until the goal is met or a stop condition hits. A durable ledger means a restart loses nothing. | `/qa-goal`, `scripts/qa_loop.py` |
 | Automated tests, twice | Each scenario runs as two independent Playwright passes. If the passes disagree, the result is **FLAKY**, never a pass. | `qa-automation-tester`, `record.py` |
-| Narrated video evidence | Native Playwright video with a caption bar, a natural voice (edge-tts, EN/AR), `.srt` captions, a trace and screenshots. | `/qa-record` |
+| Narrated video evidence | Native Playwright video with a caption bar, a natural voice (edge-tts, EN/AR), `.srt` captions, a trace and screenshots. Still or idle stretches (waiting, slow typing) are sped up or cut to a cap per video type, captions kept in sync, original kept. | `/qa-record`, `scripts/video_trim.py` |
 | Code + security review | A read-only reviewer, plus an OWASP-style security reviewer (secrets, dependency audit, headers/cookies/CORS). Only finding *counts* ever leave the machine. | `/qa-security` |
 | Load testing | Ramp, soak and spike profiles with p95/p99/error-rate thresholds and a chart, on allow-listed hosts only. A k6 template is included. | `/qa-load` |
 | Live regression | Read-only flows on staging/live, with Chrome DevTools console, network and performance evidence on failure. | `qa-live-regression-recorder` |
 | Refuter | A second agent tries to kill every failure and finding before it is filed (the two-agent bar). | `qa-refuter` |
 | Offline HTML report | Pass/fail table, video players, screenshots, console/network, bugs, load and security summaries, and a trend across old runs. | `/qa-report` |
 | Learns from old runs | Reads earlier ledgers for trend, flaky cases, open bugs and re-checks before planning. | `scripts/qa_history.py` |
-| Auto-delivery | Telegram, WhatsApp (Meta or Twilio), Slack, email and webhooks, configured per project. Dry-run by default, and secrets come from env vars only. | `/qa-deliver` |
+| Auto-delivery | Telegram, WhatsApp (Meta or Twilio), Slack, email, webhooks and Knowcap (upload, returns a Knowcap link), configured per project. Dry-run by default, and secrets come from env vars only. | `/qa-deliver` |
 | Voice narrator | Spoken run summaries for non-technical people, narration under any video (with ducking), and slide videos from screenshots. | `scripts/narrator.py` |
 | Demo videos | Polished feature demos and tutorials. | `/qa-demo` |
 | Desktop control | Native apps, OS dialogs and Electron apps on Windows/macOS. Uses Claude computer use when available, otherwise pywinauto/pyautogui/osascript. Gated, recorded and logged. | `qa-desktop-tester` |
@@ -139,9 +139,11 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 - `live: true` for production sites (the run stops before any input);
 - the narrator voice and language;
 - the loop limits;
+- video length: `video.type` (simple / standard / walkthrough, caps about 60 / 150 / 240 s in `video.types`), `video.max_seconds` (a ceiling for every type) and `video.trim` (`speed`, `cut` or `off`). A plan can set `"video_type"`. The report shows the original and final length;
 - the delivery channels (each one names the **env var** holding its secret);
 - `issues.repo`: where `/qa-issue` files ShipShape bugs (default `Shadysmetools/shipshape`);
-- desktop control (`desktop.enabled`, `allow_apps`).
+- desktop control (`desktop.enabled`, `allow_apps`);
+- optional Odoo tickets (`odoo:`): `scripts/odoo_ticket.py read` gives the QA lead the ticket and the other agents' log-note analysis, `post` writes the result back as one log note, `move` sets the stage, and `watch` starts a run when a ticket enters a chosen stage (`docs/SCHEDULED-MODE.md`). The Odoo API key is your own (`keys.py set ODOO_API_KEY`); writes are dry-run unless `--send` and the owner approves.
 
 ## Safety, by design
 
@@ -163,17 +165,19 @@ What ShipShape does for a client, the install path, support boundaries and the (
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **171 pass / 0 fail / 1 skipped** (172 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 8.1): **198 pass / 0 fail / 1 skipped** (199 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
 - the privacy filter and the report counter (including FLAKY and the "all green" check);
 - the loop's stop conditions, ledger resume and old-run reading;
 - the HTML report;
+- video length limits and dead-time trimming on small ffmpeg-generated videos: freeze detection, captions shifted in sync, idle stretches under a caption left alone, the over-cap fallback, the kept original, one-line config errors (`tests/test_video_trim.py`);
 - every notifier (mocked HTTP and dry-run);
 - the load tester against a local server;
 - the security wrappers;
 - the narrator, the Odoo checker and the stack lock;
+- the Odoo ticket bridge (`tests/test_odoo_ticket.py`) against a mocked Odoo JSON-RPC: read, post (privacy-filtered, once per run), move (stage narrowed to the ticket's team), watch (one run per stage entry, baseline, time limit) and the hook gates;
 - the desktop gates (mock and dry-run);
 - the plugin manifests and hooks;
 - dry-runs of all three workflows with mocked agents;
@@ -190,6 +194,7 @@ The suite covers:
 | Marketplace add + plugin install in a clean, isolated Claude config | see `docs/INSTALL-PROOF.md` |
 | Recording, narration, report, loop, load (native engine), security wrappers, timesheet, Odoo check | run here against the local example app |
 | Real sends to Telegram/WhatsApp/Slack/email | **not run**; tested with mocked HTTP and dry-run only |
+| Odoo ticket read/post/move/watch on a real Odoo | **not run**; tested against a mocked JSON-RPC server only (how a real Odoo renders the note is unchecked) |
 | k6 engine, gitleaks, pip-audit, osv-scanner | used when installed; not installed on the build machine, so only the "skipped" path is tested |
 | Desktop control on a real desktop | gated smoke test, not run in CI |
 | Prompt and agent hooks judged live by a model | JSON validated; the model's judgement is not unit-testable. The deterministic commit-scan hook is tested through its literal hooks.json command |
@@ -220,6 +225,7 @@ docs/              GUIDE, OPERATING-RULES, BROWSERS, HOOKS-IN-PLAIN-LANGUAGE, TI
 ## FAQ
 - **Do I need API keys?** No. Narration uses free edge-tts voices. OpenAI or ElevenLabs voices and the delivery channels are optional. When one needs a key that isn't set, ShipShape asks for it in a masked window (or a hidden terminal prompt) and saves it on your computer only: the OS keychain if `keyring` is installed, otherwise `~/.config/shipshape/secrets/keys.json`. Env vars still win. Manage keys with `python scripts/keys.py set|check|list|delete`; set `SMEKIT_NO_PROMPT=1` for unattended runs.
 - **Will it touch my production site?** Only read-only flows, and only if you allow-list the host. Any input on a site marked `live: true` stops and asks.
+- **Can videos use our own voices?** Yes: add named profiles under `narrator.voices` (e.g. one ElevenLabs cloned voice per team member) and pick one with `--voice <profile>`; `narrator.default_voice` is the default. `/qa-setup` walks you through it. Only use a voice whose owner agreed (consent). ShipShape ships no keys: each user saves their own ElevenLabs/OpenAI key with `keys.py`. If the provider refuses (e.g. HTTP 402, paid plan required), the free voice speaks and the run says so.
 - **Arabic?** Set `narrator.lang: ar` (voices `ar-EG-ShakirNeural` / `ar-EG-SalmaNeural`). Delivery templates exist in EN and AR.
 - **Scheduled runs?** Off by default. See `docs/SCHEDULED-MODE.md`.
 

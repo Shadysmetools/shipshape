@@ -8,7 +8,9 @@ No model call: it reads the hook input on stdin, classifies the action and answe
   ask   actions that need the owner's own click: merges (git merge, gh pr merge), filing a GitHub
         issue (gh issue create, used by /qa-issue), deletes of
         branches/remote refs/files outside tmp or run folders, `notify.py --send` (after a
-        deterministic config check), `desktop.py run` without --dry-run (after the desktop gate)
+        deterministic config check), `desktop.py run` without --dry-run (after the desktop gate),
+        `odoo_ticket.py post|move --send` (a move to the on_pass/on_fail stage is allowed only
+        when the project config sets auto_move: true)
 
 Exit 0 with a JSON decision on stdout; "ask" routes the call to the real user's permission prompt,
 so a relayed "they approved" can never stand in for the owner's own words.
@@ -72,6 +74,8 @@ def classify_command(cmd, cwd):
             return "ask", "Deleting files outside tmp/, qa-runs/, qa-evidence/ or build/ needs the owner's own OK."
     if re.search(r"notify\.py\b[^|;&]*--send\b", cmd):
         return check_notify(cmd, cwd)
+    if re.search(r"odoo_ticket\.py\b[^|;&]*\b(?:post|move)\b[^|;&]*--send\b", cmd):
+        return check_odoo(cmd, cwd)
     if re.search(r"desktop\.py\b[^|;&]*\brun\b", cmd) and not re.search(r"--dry-run\b", cmd):
         return check_desktop(cmd, cwd)
     return None
@@ -103,6 +107,21 @@ def check_notify(cmd, cwd):
     if not names:
         return "deny", f"Delivery refused: no channel is enabled in {os.path.basename(path)}"
     return "ask", f"Real delivery to {', '.join(names)}: the owner clicks to approve (dry-run needs no approval)."
+
+
+def check_odoo(cmd, cwd):
+    try:
+        import odoo_ticket
+        cfg, path = _load_cfg(cmd, cwd)
+        oc = odoo_ticket.odoo_config(cfg, path)
+    except Exception as exc:  # noqa: BLE001
+        return "deny", f"Odoo write refused: {str(exc).splitlines()[0][:160]}"
+    if re.search(r"odoo_ticket\.py\b[^|;&]*\bmove\b", cmd):
+        stage = _arg(cmd, "--stage")
+        if oc["auto_move"] is True and stage and stage in (oc["on_pass"], oc["on_fail"]):
+            return None  # the owner set auto_move: true in the project config for exactly these stages
+        return "ask", f"Moving an Odoo ticket to stage {stage!r} is a write: the owner clicks to approve (dry-run needs no approval)."
+    return "ask", "Posting a log note on an Odoo ticket is a write: the owner clicks to approve (dry-run needs no approval)."
 
 
 def check_desktop(cmd, cwd):

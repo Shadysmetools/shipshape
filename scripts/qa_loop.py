@@ -11,6 +11,9 @@ script owns state, timeouts and stop conditions so a restart loses nothing.
     python scripts/qa_loop.py bug    [--run <dir>] --id B1 --status verified|refuted|filed|fixed [--link URL] [--note ...]
     python scripts/qa_loop.py gate   [--run <dir>] --close G1 | --open "reason"
     python scripts/qa_loop.py resume [--root qa-runs]             # print the newest unfinished run dir
+    python scripts/qa_loop.py consult [--run <dir>] --agent NAME --question "..." --answer "..."
+                                     [--via subagent|session|command] [--id B1] [--by qa-refuter]
+                                     # record a question put to an external agent and its answer
 
 Next actions, in priority order:
   stop           a stop condition holds (goal met, max rounds, budget, no progress, human gate)
@@ -60,7 +63,22 @@ def save(run, ledger):
 def new_ledger(goal, plans, max_rounds=5, budget_min=120, round_timeout=900, target=None):
     return {"goal": goal, "created": now(), "status": "running", "stop_reason": None,
             "limits": {"max_rounds": max_rounds, "budget_minutes": budget_min, "round_timeout_sec": round_timeout},
-            "target": target or {}, "plans": plans, "rounds": [], "bugs": [], "human_gates": [], "elapsed_minutes": 0.0}
+            "target": target or {}, "plans": plans, "rounds": [], "bugs": [], "human_gates": [], "consults": [],
+            "elapsed_minutes": 0.0}
+
+
+def add_consult(ledger, agent, question, answer, via=None, bug=None, by=None):
+    """Record one question put to an external agent (crew.py external) and the answer it gave.
+    Older ledgers have no `consults` list; it is created here. A bug id links the answer to that bug."""
+    if bug and not any(b["id"] == bug for b in ledger["bugs"]):
+        raise KeyError(f"no bug {bug}")
+    c = {"id": f"Q{len(ledger.setdefault('consults', [])) + 1}", "agent": agent, "via": via, "question": question,
+         "answer": answer, "bug": bug, "by": by, "at": now()}
+    ledger["consults"].append(c)
+    if bug:
+        b = next(x for x in ledger["bugs"] if x["id"] == bug)
+        b.setdefault("history", []).append(f"{c['at']} asked {agent} ({c['id']}): {question} -> {answer}")
+    return c
 
 
 def plan_path(run_dir, plan):
@@ -185,6 +203,7 @@ def run_round(run_dir, ledger, narrate=False, passes=2, runner=None):
                 r["evidence"] = r.get("evidence", "").split(" + ")[0]
         runs.append({"plan": plan, "dir": os.path.relpath(outs[0], run_dir).replace(os.sep, "/"), "passes": passes,
                      "summary": res[0].get("summary"), "video": res[0].get("video"), "results": rows,
+                     "video_seconds": res[0].get("video_seconds"), "video_note": res[0].get("video_note"),
                      "console": res[0].get("console", []), "network": res[0].get("network", []), "stopped": res[0].get("stopped"), "mixed": res[0].get("mixed"),
                      "base_url": res[0].get("base_url"), "target_notes": res[0].get("target_notes", []),
                      "narration": [r.get("narration_note") or ("voice" if r.get("narrated") else "no voice") for r in res]})
@@ -204,7 +223,7 @@ def newest_open(root):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=("start", "round", "status", "bug", "gate", "resume", "attach"))
+    ap.add_argument("cmd", choices=("start", "round", "status", "bug", "gate", "resume", "attach", "consult"))
     ap.add_argument("--root", default="qa-runs")
     ap.add_argument("--run")
     ap.add_argument("--goal")
@@ -224,6 +243,11 @@ def main(argv=None):
     ap.add_argument("--file")
     ap.add_argument("--close")
     ap.add_argument("--open", dest="open_reason")
+    ap.add_argument("--agent", help="consult: the external agent's name from qa.config.yaml agents.external")
+    ap.add_argument("--question")
+    ap.add_argument("--answer")
+    ap.add_argument("--via", choices=("subagent", "session", "command"))
+    ap.add_argument("--by", help="consult: who asked (qa-lead, qa-refuter)")
     a = ap.parse_args(argv)
 
     if a.cmd == "start":
@@ -283,6 +307,13 @@ def main(argv=None):
         else:
             entry.update(summary=data.get("summary"), verdict=data.get("verdict"))
         ledger[a.kind] = entry
+    elif a.cmd == "consult":
+        if not (a.agent and a.question and a.answer):
+            ap.error("consult needs --agent, --question and --answer")
+        try:
+            add_consult(ledger, a.agent, a.question, a.answer, a.via, a.id, a.by)
+        except KeyError as exc:
+            ap.error(exc.args[0])
     elif a.cmd == "gate":
         if a.close:
             for g in ledger["human_gates"]:
@@ -295,7 +326,8 @@ def main(argv=None):
     save(run, ledger)
     out = {"run": run, **d, "rounds": len(ledger["rounds"]), "elapsed_minutes": ledger["elapsed_minutes"],
            "last": ledger["rounds"][-1]["summary"] if ledger["rounds"] else None,
-           "open_bugs": [b["id"] + ":" + b["status"] for b in ledger["bugs"] if b["status"] in OPEN_BUG]}
+           "open_bugs": [b["id"] + ":" + b["status"] for b in ledger["bugs"] if b["status"] in OPEN_BUG],
+           "consults": len(ledger.get("consults", []))}
     print(json.dumps(out))
     return 0
 
