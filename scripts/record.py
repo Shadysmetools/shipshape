@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Run a QA plan in a real browser and record narrated video evidence.
 
-    python scripts/record.py plan.json --out qa-evidence/<run> [--narrate] [--browser chromium|firefox|webkit]
+    python scripts/record.py plan.json --out qa-evidence/<run> [--narrate [--voice <profile>]] [--browser chromium|firefox|webkit]
                              [--headed] [--total-timeout 900] [--step-timeout 15]
 
 Pipeline: run -> record (Playwright native video + trace) -> caption -> narrate
-(edge-tts, synthesized BEFORE the run so there are no pauses) -> mp4 + .srt ->
+(the project's voice profile, free edge-tts by default, synthesized BEFORE the run so there are no pauses) -> mp4 + .srt ->
 results.json + "N pass / M fail". Upload is a separate, privacy-filtered step.
 
 Guards built in (see docs/OPERATING-RULES.md):
@@ -152,7 +152,33 @@ def apply_target(plan, base_url=None, allow_hosts=None):
     return plan
 
 
-def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_timeout=900, step_timeout=15):
+def synthesize(steps, voice=None):
+    """Make every 'say' clip BEFORE the run: no pauses in the recording, and a failed voice never blocks the test.
+    voice: a narrator.resolve() result (None = the project default). Returns (clips, narration_note)."""
+    import narrator
+    voice = voice or narrator.resolve(None, narrator.load_config())
+    clips, missed, fallback = {}, [], []
+    for s in steps:
+        if s.get("say") and s["say"] not in clips:
+            try:
+                p, d, note = narrator.speak(s["say"], voice)
+                clips[s["say"]] = (p, d)
+                if note and note not in fallback:
+                    fallback.append(note)
+            except RuntimeError as exc:
+                missed.append(str(exc).splitlines()[0][:120])
+    notes = list(fallback)
+    if missed:
+        notes.append(f"{len(missed)} narration line(s) not synthesized (no voice for them): {missed[0]}")
+    elif not clips:
+        notes.append("no 'say' lines in the plan, so there is no voice")
+    note = "; ".join(notes) or None
+    if missed:
+        print("[record]", notes[-1])
+    return clips, note
+
+
+def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_timeout=900, step_timeout=15, voice=None):
     from playwright.sync_api import sync_playwright
 
     os.makedirs(out, exist_ok=True)
@@ -162,25 +188,7 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
     base = plan.get("base_url", "")
     w, h = plan.get("viewport", [1280, 720])
 
-    clips = {}
-    narration_note = None
-    if narrate:  # synthesize first: no pauses in the recording, and a failed voice never blocks the test
-        import tts
-        missed = []
-        for s in plan["steps"]:
-            if s.get("say"):
-                try:
-                    p, d, _ = tts.speak(s["say"])
-                    clips[s["say"]] = (p, d)
-                except RuntimeError as exc:
-                    missed.append(str(exc).splitlines()[0][:120])
-        if missed:
-            narration_note = f"{len(missed)} narration line(s) not synthesized (no voice for them): {missed[0]}"
-            print("[record]", narration_note)
-        elif not clips:
-            narration_note = "no 'say' lines in the plan, so there is no voice"
-    else:
-        narration_note = "narration off (--narrate not given)"
+    clips, narration_note = synthesize(plan["steps"], voice) if narrate else ({}, "narration off (--narrate not given)")
     for n in plan.get("_target_notes", []):
         print("[record]", n)
 
@@ -326,6 +334,7 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
     summary = {"name": plan.get("name"), "summary": report.summary(counts), "counts": counts, "stopped": stop,
                "blocked_hosts": sorted(set(b for b in blocked if b)), "video": os.path.basename(mp4) if mp4 else (raw and os.path.relpath(raw, out)),
                "trace": "trace.zip", "captions": "captions.srt", "narrated": bool(clips), "narration_note": narration_note,
+               "voice": (voice or {}).get("profile"),
                "base_url": base, "target_notes": plan.get("_target_notes", []), "screenshots": [os.path.basename(x) for x in shots],
                "console": console, "network": network, "results": rows, "elapsed_sec": round(time.time() - t_start, 1),
                "browser": browser_name, "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -343,6 +352,8 @@ def main(argv=None):
     ap.add_argument("plan")
     ap.add_argument("--out", required=True)
     ap.add_argument("--narrate", action="store_true")
+    ap.add_argument("--voice", help="voice profile from narrator.voices in qa.config.yaml (default: narrator.default_voice)")
+    ap.add_argument("--config", default="qa.config.yaml", help="project config with the voice profiles")
     ap.add_argument("--browser", default="chromium", choices=("chromium", "firefox", "webkit"))
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--total-timeout", type=int, default=900)
@@ -355,7 +366,13 @@ def main(argv=None):
     except PlanError as exc:
         print(f"ERROR: {exc}")
         return 2
-    s = run(plan, a.out, a.narrate, a.browser, a.headed, a.total_timeout, a.step_timeout)
+    import narrator
+    try:
+        voice = narrator.resolve(a.voice, narrator.load_config(a.config))
+    except narrator.VoiceError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    s = run(plan, a.out, a.narrate, a.browser, a.headed, a.total_timeout, a.step_timeout, voice)
     print(s["summary"], "| stopped:", s["stopped"] or "no", "| blocked hosts:", s["blocked_hosts"] or "none",
           "| video:", s["video"])
     return 0 if s["counts"]["FAIL"] == 0 and s["counts"]["BLOCKED"] == 0 else 1
