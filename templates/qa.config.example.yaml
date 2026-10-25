@@ -44,3 +44,11 @@ notify:
   webhook:
     enabled: false
     url: {env: QA_WEBHOOK_URL}
+  knowcap:                                 # upload the video + report to YOUR Knowcap project, get a Knowcap link back
+    type: knowcap
+    enabled: false
+    api_key: {env: KNOWCAP_API_KEY}        # your own key (Knowcap > Settings > API Keys); saved with keys.py, never here
+    project_id: "<KNOWCAP_PROJECT_ID>"     # placeholder: the project the video goes into
+    folder_id: null                        # optional folder inside that project
+    share: false                           # true = also make a public share link (a publish: needs the owner's OK)
+    send_report: true                      # also upload report.html (best effort)

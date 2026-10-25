@@ -93,7 +93,7 @@ def test_security_details_never_reach_the_message(tmp_path):
 
 def test_example_config_parses_and_has_no_secret_values():
     cfg = notify.load_config(os.path.join(ROOT, "templates", "qa.config.example.yaml"))
-    assert set(cfg["notify"]) == {"telegram", "whatsapp", "slack", "email", "webhook"}
+    assert set(cfg["notify"]) == {"telegram", "whatsapp", "slack", "email", "webhook", "knowcap"}
     assert all(not ch["enabled"] for ch in cfg["notify"].values())
 
 

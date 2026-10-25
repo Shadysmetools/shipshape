@@ -4,7 +4,12 @@ in qa.config.yaml. DRY-RUN BY DEFAULT: it prints what it would send.
 
     python scripts/notify.py <run_dir> [--config qa.config.yaml] [--lang en|ar] [--send] [--only telegram]
 
-Channels: telegram, whatsapp (meta | twilio), slack, email, webhook.
+Channels: telegram, whatsapp (meta | twilio), slack, email, webhook, knowcap.
+- knowcap uploads the run's video (and report) to the user's own Knowcap project
+  with the user's own API key, then returns a Knowcap link (a public share link
+  only when share: true). Knowcap channels run first, so the other channels'
+  messages carry the link. The privacy filter and the evidence rules run first:
+  any privacy hit, or `live: true` (client production data), refuses the upload.
 - Only channels present AND enabled in the project config are used. A channel
   name that is not in the config is refused (the plain-language hook enforces
   the same in conversation).
@@ -42,7 +47,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import keys  # noqa: E402
 
 MB = 1024 * 1024
-LIMITS = {"telegram": 50 * MB, "whatsapp": 16 * MB, "slack": 0, "email": 20 * MB, "webhook": 0}
+LIMITS = {"telegram": 50 * MB, "whatsapp": 16 * MB, "slack": 0, "email": 20 * MB, "webhook": 0, "knowcap": 0}
 CAPTION_MAX = {"telegram": 1024, "whatsapp": 1024}
 TEMPLATES = {
     "en": "QA: {goal}\nResult: {summary}\nVerdict: {verdict}\nRun: {run}{security}{link}",
@@ -55,7 +60,7 @@ class ConfigError(Exception):
     """qa.config.yaml is unusable; the message is one readable line."""
 
 
-SECRET_FIELDS = ("token", "webhook_url", "url", "password", "account_sid", "auth_token")
+SECRET_FIELDS = ("token", "webhook_url", "url", "password", "account_sid", "auth_token", "api_key")
 
 
 def validate_config(cfg, path="qa.config.yaml"):
@@ -83,7 +88,27 @@ def validate_config(cfg, path="qa.config.yaml"):
         for field in ("to",):
             if field in ch and not isinstance(ch[field], list):
                 raise ConfigError(f"config error at notify.{name}.{field}: expected a list of recipients")
+        if ch.get("type", name) == "knowcap":
+            validate_knowcap(name, ch)
     return cfg
+
+
+def validate_knowcap(name, ch):
+    pid = ch.get("project_id")
+    if pid is not None and not isinstance(pid, str):
+        raise ConfigError(f"config error at notify.{name}.project_id: expected a string, got {pid!r}")
+    if ch.get("enabled") and not (pid or "").strip():
+        raise ConfigError(f"config error at notify.{name}.project_id: expected the Knowcap project id")
+    if ch.get("folder_id") is not None and not isinstance(ch["folder_id"], str):
+        raise ConfigError(f"config error at notify.{name}.folder_id: expected a string or nothing, got {ch['folder_id']!r}")
+    for field in ("share", "send_report"):
+        if field in ch and not isinstance(ch[field], bool):
+            raise ConfigError(f"config error at notify.{name}.{field}: expected true or false, got {ch[field]!r}")
+    base = ch.get("api_base")
+    if base is not None and not (isinstance(base, str) and base.startswith("https://")):
+        raise ConfigError(f"config error at notify.{name}.api_base: expected an https:// URL, got {base!r}")
+    if ch.get("enabled") and not isinstance(ch.get("api_key"), dict):
+        raise ConfigError(f"config error at notify.{name}.{'api_key'}: expected {{env: KNOWCAP_API_KEY}} (the user's own key, never a value)")
 
 
 def load_config(path):
@@ -279,6 +304,164 @@ def plan_webhook(ch, text, video, report, env, link=None, payload=None):
     return [("POST", url or "<WEBHOOK_URL>", payload or {"text": text}, {})], url
 
 
+# ------------------------------------------------------------- knowcap
+# Request and response shapes follow the Knowcap MCP client (knowcap-mcp src/client.ts, src/tools/sources.ts):
+#   POST /api/sources/prepare-upload {projectId, fileName, fileSize, mimeType} -> {sourceId, storagePath, uploadUrl, token}
+#   PUT  <uploadUrl>  Authorization: Bearer <token>, Content-Type: <mimeType>, raw bytes (never the API key)
+#   POST /api/sources/confirm-upload {projectId, path: storagePath, fileName, fileSize, mimeType} -> {source}
+#   POST /api/sources/{id}/move {targetProjectId}  (an upload lands in the Inbox until it is moved)
+#   POST /api/projects/{pid}/folders/{fid}/sources/bulk {source_ids}
+#   POST /api/share/source/{id} {} -> {url, token}  (idempotent)
+KNOWCAP_BASE = "https://app.knowcap.ai"
+KNOWCAP_MIME = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".html": "text/html", ".pdf": "application/pdf"}
+
+
+def knowcap_base(ch):
+    return (ch.get("api_base") or KNOWCAP_BASE).rstrip("/")
+
+
+def knowcap_mime(path):
+    return KNOWCAP_MIME.get(os.path.splitext(path)[1].lower(), "application/octet-stream")
+
+
+def knowcap_files(run_dir, ch):
+    """(kind, path) pairs to upload: the newest video, then the report unless send_report is false."""
+    files = []
+    video = find_video(run_dir)
+    if video:
+        files.append(("video", video))
+    report = os.path.join(run_dir, "report.html")
+    if ch.get("send_report", True) and os.path.exists(report):
+        files.append(("report", report))
+    return files
+
+
+def knowcap_guard(run_dir, cfg):
+    """The evidence rules before anything is uploaded. Returns a refusal reason, or None."""
+    if cfg.get("live"):
+        return "live: true in the config (a client's live site): client production data is never uploaded"
+    import privacy
+    hits = privacy.scan_paths([run_dir], privacy.load_denylist())
+    if hits:
+        return f"privacy filter found {len(hits)} item(s) in the run folder; run privacy.py scan on it and fix them first"
+    return None
+
+
+def knowcap_share_allowed(run_dir, ch):
+    """A public share link only when asked for, and never for a run with security findings (operating rule 1)."""
+    if not ch.get("share", False):
+        return False
+    try:
+        with open(os.path.join(run_dir, "ledger.json"), encoding="utf-8") as fh:
+            return not (json.load(fh).get("security") or {}).get("count")
+    except (OSError, ValueError):
+        return True
+
+
+def plan_knowcap(ch, files, share):
+    """The calls a real send makes; values only the server can give are shown as <placeholders>."""
+    base, pid = knowcap_base(ch), ch.get("project_id") or "<KNOWCAP_PROJECT_ID>"
+    calls = []
+    for kind, path in files:
+        meta = {"projectId": pid, "fileName": os.path.basename(path), "fileSize": os.path.getsize(path), "mimeType": knowcap_mime(path)}
+        calls.append(("POST", base + "/api/sources/prepare-upload", meta, {}))
+        calls.append(("PUT", "<signed uploadUrl>", {}, {kind: path}))
+        calls.append(("POST", base + "/api/sources/confirm-upload", dict(meta, path="<storagePath>"), {}))
+        calls.append(("POST", base + "/api/sources/<sourceId>/move", {"targetProjectId": pid}, {}))
+        if ch.get("folder_id"):
+            calls.append(("POST", f"{base}/api/projects/{pid}/folders/{ch['folder_id']}/sources/bulk", {"source_ids": ["<sourceId>"]}, {}))
+    if files and share:
+        calls.append(("POST", base + "/api/share/source/<sourceId>", {}, {}))
+    return calls
+
+
+def knowcap_json(http_fn, method, url, body, key):
+    _status, text = with_retry(http_fn, method, url, json.dumps(body).encode(),
+                               {"x-api-key": key, "Content-Type": "application/json", "Accept": "application/json"})
+    try:
+        return json.loads(text) if text else {}
+    except ValueError:
+        raise RuntimeError(f"Knowcap answered {method} {url.split('?')[0]} with something that is not JSON") from None
+
+
+def knowcap_upload(http_fn, ch, path, key):
+    """prepare -> PUT -> confirm -> move (if it landed in the Inbox) -> folder. Returns the source id."""
+    base, pid = knowcap_base(ch), ch["project_id"]
+    name, size, mime = os.path.basename(path), os.path.getsize(path), knowcap_mime(path)
+    prep = knowcap_json(http_fn, "POST", base + "/api/sources/prepare-upload",
+                        {"projectId": pid, "fileName": name, "fileSize": size, "mimeType": mime}, key)
+    if not prep.get("uploadUrl") or not prep.get("storagePath"):
+        raise RuntimeError("Knowcap prepare-upload gave no uploadUrl/storagePath")
+    with open(path, "rb") as fh:
+        data = fh.read()
+    put_headers = {"Content-Type": mime}
+    if prep.get("token"):
+        put_headers["Authorization"] = f"Bearer {prep['token']}"
+    with_retry(http_fn, "PUT", prep["uploadUrl"], data, put_headers)  # signed storage URL: the API key never goes here
+    conf = knowcap_json(http_fn, "POST", base + "/api/sources/confirm-upload",
+                        {"projectId": pid, "path": prep["storagePath"], "fileName": name, "fileSize": size, "mimeType": mime}, key)
+    source = conf.get("source") or {}
+    sid = source.get("id") or prep.get("sourceId")
+    if not sid:
+        raise RuntimeError("Knowcap confirm-upload gave no source id")
+    if source.get("project_id") != pid:
+        knowcap_json(http_fn, "POST", f"{base}/api/sources/{sid}/move", {"targetProjectId": pid}, key)
+    if ch.get("folder_id"):
+        knowcap_json(http_fn, "POST", f"{base}/api/projects/{pid}/folders/{ch['folder_id']}/sources/bulk", {"source_ids": [sid]}, key)
+    return sid
+
+
+def knowcap_store(env):
+    return os.path.join(os.path.dirname(store_path(env)), "knowcap-sources.json")
+
+
+def knowcap_key(run_dir, channel, pid, kind, path):
+    import hashlib
+    blob = json.dumps([os.path.basename(os.path.abspath(run_dir)), channel, pid, kind, os.path.basename(path), os.path.getsize(path)])
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def send_knowcap(run_dir, name, ch, files, share, key, http_fn, env):
+    """Upload each file once (a re-run reuses the stored source id), then return the Knowcap link."""
+    spath = knowcap_store(env)
+    try:
+        with open(spath, encoding="utf-8") as fh:
+            done = json.load(fh)
+    except (OSError, ValueError):
+        done = {}
+    base, pid = knowcap_base(ch), ch["project_id"]
+    sources, uploaded, skipped, notes = {}, 0, 0, []
+    for kind, path in files:
+        k = knowcap_key(run_dir, name, pid, kind, path)
+        if k in done:
+            sources[kind] = done[k]
+            skipped += 1
+            continue
+        try:
+            sources[kind] = knowcap_upload(http_fn, ch, path, key)
+        except Exception as exc:  # noqa: BLE001
+            if kind == "video":
+                raise
+            notes.append(f"{kind} not uploaded: {redact(str(exc))[:120]}")  # the report is best effort; the video link still counts
+            continue
+        uploaded += 1
+        done[k] = sources[kind]
+        tmp = spath + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(done, fh)
+        os.replace(tmp, spath)
+    sid = sources.get("video") or sources.get("report")
+    if not sid:
+        raise RuntimeError("nothing was uploaded to Knowcap (no video or report in the run folder)")
+    link = f"{base}/project/{pid}/meeting/{sid}"  # private: opens for members of the project
+    if share:
+        res = knowcap_json(http_fn, "POST", f"{base}/api/share/source/{sid}", {}, key)
+        url = res.get("url") or (res.get("token") and f"/share/{res['token']}")
+        if url:
+            link = base + url if url.startswith("/") else url
+    return {"link": link, "sources": sources, "uploaded": uploaded, "already_sent": skipped, "notes": notes}
+
+
 def store_path(env=None):
     env = os.environ if env is None else env
     base = env.get("SMEKIT_STATE_DIR") or os.path.join(os.path.expanduser("~"), ".cache", "smekit")
@@ -329,6 +512,9 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
     channels = cfg.get("notify", {})
     results = []
     names = [only] if only else list(channels)
+    # Knowcap first: its link then goes into every other channel's message
+    names.sort(key=lambda n: 0 if isinstance(channels.get(n), dict) and channels[n].get("type", n) == "knowcap" and channels[n].get("enabled") else 1)
+    knowcap_link = None
     for name in names:
         if name not in channels:
             results.append({"channel": name, "status": "REFUSED", "detail": "not listed in the project config"})
@@ -342,6 +528,8 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
             ask_missing_keys(name, ch, asker)
         link = cfg.get("report_link_base") and cfg["report_link_base"].rstrip("/") + "/" + os.path.basename(os.path.abspath(run_dir)) + "/report.html"
         text = summary_text(run_dir, ch.get("lang", lang), link, (ch.get("templates") or {}).get(ch.get("lang", lang)))
+        if knowcap_link and kind != "knowcap":
+            text += f"\nKnowcap: {knowcap_link}"
         report = os.path.join(run_dir, "report.html") if os.path.exists(os.path.join(run_dir, "report.html")) else None
         if report and LIMITS.get(kind) and os.path.getsize(report) > LIMITS[kind]:
             report = None
@@ -355,6 +543,16 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
             calls, cred = plan_slack(ch, text + (f"\nVideo: {vlink}" if vlink else ""), video, report, env)
         elif kind == "webhook":
             calls, cred = plan_webhook(ch, text, video, report, env, payload={"text": text, "video": vlink, "report": link})
+        elif kind == "knowcap":
+            refusal = knowcap_guard(run_dir, cfg)
+            if refusal:
+                results.append({"channel": name, "status": "REFUSED", "detail": refusal})
+                continue
+            kfiles, kshare = knowcap_files(run_dir, ch), knowcap_share_allowed(run_dir, ch)
+            calls, cred = plan_knowcap(ch, kfiles, kshare), secret(ch.get("api_key"), env)
+            video = dict(kfiles).get("video")
+            if not send:
+                knowcap_link = "<Knowcap link after upload>"
         elif kind == "email":
             calls, cred = [("SMTP", ch.get("host", "<SMTP_HOST>"), {"to": ch.get("to", []), "subject": text.splitlines()[0]}, {"video": video, "report": report})], secret(ch.get("password"), env)
         else:
@@ -372,6 +570,23 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
             continue
         if not cred:
             results.append({"channel": name, "status": "FAIL", "detail": "credential env var is not set (or save it with: python scripts/keys.py set <NAME>)"})
+            continue
+        if kind == "knowcap":
+            import stack_lock
+            lock = stack_lock.lock_path(f"notify-{name}")
+            if not stack_lock.acquire(lock, "notify", wait=120, stale=1800, poll=2):
+                results.append({"channel": name, "status": "FAIL", "detail": "another sender holds this channel"})
+                continue
+            try:
+                got = send_knowcap(run_dir, name, ch, kfiles, kshare, cred, http_fn, env)
+                knowcap_link = got["link"]
+                results.append({"channel": name, "status": "SENT", "calls": got["uploaded"], "already_sent": got["already_sent"],
+                                "knowcap_link": got["link"], "shared": kshare, "summary": text + f"\nKnowcap: {got['link']}",
+                                **({"detail": "; ".join(got["notes"])} if got["notes"] else {})})
+            except Exception as exc:  # noqa: BLE001
+                results.append({"channel": name, "status": "FAIL", "detail": mask(redact(str(exc)))[:200]})
+            finally:
+                stack_lock.release(lock)
             continue
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import stack_lock  # one sender per channel at a time (singleton per alert stream)
@@ -455,6 +670,8 @@ def main(argv=None):
     res = deliver(a.run_dir, cfg, a.lang, a.send, a.only)
     for r in res:
         print(f"{r['channel']}: {r['status']}" + (f" ({r.get('detail')})" if r.get("detail") else ""))
+        if r.get("knowcap_link"):
+            print(f"Knowcap link: {r['knowcap_link']}")
     return 1 if any(r["status"] in ("FAIL", "REFUSED") for r in res) else 0
 
 

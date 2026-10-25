@@ -37,7 +37,7 @@ Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE
 | Refuter | A second agent tries to kill every failure and finding before it is filed (the two-agent bar). | `qa-refuter` |
 | Offline HTML report | Pass/fail table, video players, screenshots, console/network, bugs, load and security summaries, and a trend across old runs. | `/qa-report` |
 | Learns from old runs | Reads earlier ledgers for trend, flaky cases, open bugs and re-checks before planning. | `scripts/qa_history.py` |
-| Auto-delivery | Telegram, WhatsApp (Meta or Twilio), Slack, email and webhooks, configured per project. Dry-run by default, and secrets come from env vars only. | `/qa-deliver` |
+| Auto-delivery | Telegram, WhatsApp (Meta or Twilio), Slack, email, webhooks and Knowcap (upload, returns a Knowcap link), configured per project. Dry-run by default, and secrets come from env vars only. | `/qa-deliver` |
 | Voice narrator | Spoken run summaries for non-technical people, narration under any video (with ducking), and slide videos from screenshots. | `scripts/narrator.py` |
 | Demo videos | Polished feature demos and tutorials. | `/qa-demo` |
 | Desktop control | Native apps, OS dialogs and Electron apps on Windows/macOS. Uses Claude computer use when available, otherwise pywinauto/pyautogui/osascript. Gated, recorded and logged. | `qa-desktop-tester` |
