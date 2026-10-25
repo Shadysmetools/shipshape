@@ -13,6 +13,14 @@ loop:
   max_rounds: 3
   budget_minutes: 120
   passes: 2                               # every scenario twice; disagreement = FLAKY
+video:                                  # short, to-the-point evidence videos (scripts/video_trim.py)
+  type: standard                          # default type; a plan can set "video_type": "simple"
+  max_seconds: 240                        # hard ceiling for every type (4 min)
+  types: {simple: 60, standard: 150, walkthrough: 240}   # cap in seconds per kind of case
+  trim: speed                             # speed | cut | off: what happens to still / idle stretches
+  speed: 8                                # how much faster idle stretches play (trim: speed)
+  min_idle_seconds: 2                     # shorter pauses are left alone
+  keep_seconds: 0.5                       # still kept at each side of a trimmed stretch
 # Optional public links (e.g. a private bucket or intranet path) used when a file is too big to attach
 report_link_base: ""
 video_link_base: ""

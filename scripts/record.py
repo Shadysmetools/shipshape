@@ -6,7 +6,11 @@
 
 Pipeline: run -> record (Playwright native video + trace) -> caption -> narrate
 (edge-tts, synthesized BEFORE the run so there are no pauses) -> mp4 + .srt ->
+trim dead time to the video cap (scripts/video_trim.py, original kept) ->
 results.json + "N pass / M fail". Upload is a separate, privacy-filtered step.
+
+Video length comes from the `video` section of qa.config.yaml (--config, default
+$SMEKIT_QA_CONFIG or ./qa.config.yaml) and the plan's optional "video_type".
 
 Guards built in (see docs/OPERATING-RULES.md):
 - Requests to hosts outside plan.allow_hosts are aborted and listed.
@@ -39,6 +43,7 @@ from urllib.parse import urljoin, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import report  # noqa: E402
+import video_trim  # noqa: E402
 
 INPUT_STEPS = {"fill", "type", "select", "check", "press", "submit"}
 PAY = re.compile(r"(?i)\b(pay|payment|checkout|purchase|buy now|place order|subscribe|card[-_ ]?number|cvc|cvv|iban)\b")
@@ -152,7 +157,8 @@ def apply_target(plan, base_url=None, allow_hosts=None):
     return plan
 
 
-def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_timeout=900, step_timeout=15):
+def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_timeout=900, step_timeout=15, video_cfg=None):
+    """video_cfg: settings from video_trim.settings(); None means the defaults."""
     from playwright.sync_api import sync_playwright
 
     os.makedirs(out, exist_ok=True)
@@ -184,7 +190,7 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
     for n in plan.get("_target_notes", []):
         print("[record]", n)
 
-    results, blocked, captions, shots = [], [], [], []
+    results, blocked, captions, shots, slow = [], [], [], [], []  # slow: typing / wait windows, dead time even when pixels move
     t_start = time.time()
     head_start = git_head(plan.get("repo"))
     with sync_playwright() as p:
@@ -240,6 +246,7 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                 caption(say)
                 hold = clips.get(say, (None, 0))[1]
                 captions.append((start, say))
+            t_step = time.time() - t0
             try:
                 if do == "goto":
                     page.goto(url, wait_until="domcontentloaded")
@@ -278,6 +285,8 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                                     "evidence": os.path.basename(path)})
                 else:
                     raise ValueError(f"unknown step {do!r}")
+                if do in ("type", "wait"):
+                    slow.append((t_step, time.time() - t0))
             except Exception as exc:  # noqa: BLE001
                 path = os.path.join(out, f"{len(shots) + 1:02d}-{s.get('case', 'step')}-fail.png")
                 msg = str(exc).splitlines()[0][:160]
@@ -289,6 +298,8 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                     pass
                 results.append({"id": s.get("case", f"step-{i + 1}"), "title": say or do, "result": "FAIL",
                                 "evidence": os.path.basename(path), "note": msg})
+                if do in ("type", "wait"):
+                    slow.append((t_step, time.time() - t0))
                 if s.get("case") is None or s.get("stop_on_fail", True):
                     stop = f"step {i + 1} failed"
                     page.wait_for_timeout(1500)
@@ -323,18 +334,30 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
             args += ["-filter_complex", mix, "-map", "0:v", "-map", "[aout]", "-c:a", "aac", "-b:a", "128k"]
         args += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "medium", "-crf", "23", "-movflags", "+faststart", mp4]
         subprocess.run(args, check=True, timeout=600)
+    video_len, trim_note = None, None
+    if mp4:  # a failed or slow trim keeps the untrimmed video and never changes a result
+        try:
+            video_len = video_trim.trim(mp4, srt, video_cfg or video_trim.settings(), plan.get("video_type"), slow=slow, timeout=240)
+            trim_note = video_trim.describe(video_len)
+            print("[record]", trim_note)
+        except (video_trim.ConfigError, RuntimeError, subprocess.SubprocessError, OSError) as exc:
+            trim_note = f"video not trimmed: {str(exc).splitlines()[0][:160] if str(exc) else type(exc).__name__}"
+            print("[record]", trim_note)
     summary = {"name": plan.get("name"), "summary": report.summary(counts), "counts": counts, "stopped": stop,
                "blocked_hosts": sorted(set(b for b in blocked if b)), "video": os.path.basename(mp4) if mp4 else (raw and os.path.relpath(raw, out)),
                "trace": "trace.zip", "captions": "captions.srt", "narrated": bool(clips), "narration_note": narration_note,
                "base_url": base, "target_notes": plan.get("_target_notes", []), "screenshots": [os.path.basename(x) for x in shots],
                "console": console, "network": network, "results": rows, "elapsed_sec": round(time.time() - t_start, 1),
                "browser": browser_name, "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-               "head_start": head_start, "head_end": git_head(plan.get("repo"))}
+               "head_start": head_start, "head_end": git_head(plan.get("repo")),
+               "video_original": (video_len or {}).get("original"), "video_seconds": video_len, "video_note": trim_note}
     summary["mixed"] = bool(head_start and summary["head_end"] and head_start != summary["head_end"])
     with open(os.path.join(out, "results.json"), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=1)
     with open(os.path.join(out, "QA-REPORT.md"), "w", encoding="utf-8") as fh:
         fh.write(report.to_markdown(rows, counts, f"QA run: {plan.get('name', '')}"))
+        if trim_note:
+            fh.write(f"\nVideo length: {trim_note}\n")
     return summary
 
 
@@ -349,13 +372,17 @@ def main(argv=None):
     ap.add_argument("--step-timeout", type=int, default=15)
     ap.add_argument("--base-url", help="overrides the plan's base_url (the target you name wins)")
     ap.add_argument("--allow-host", action="append", default=[], help="overrides the plan's allow_hosts (repeatable)")
+    ap.add_argument("--config", default=os.environ.get("SMEKIT_QA_CONFIG", "qa.config.yaml"),
+                    help="qa.config.yaml; only its video section is read here")
     a = ap.parse_args(argv)
     try:
         plan = apply_target(load_plan(a.plan), a.base_url, a.allow_host)
-    except PlanError as exc:
+        video_cfg = video_trim.settings(video_trim.load_video_section(a.config))
+        video_trim.cap_for(video_cfg, plan.get("video_type"))  # an unknown plan video_type fails here, before the run
+    except (PlanError, video_trim.ConfigError) as exc:
         print(f"ERROR: {exc}")
         return 2
-    s = run(plan, a.out, a.narrate, a.browser, a.headed, a.total_timeout, a.step_timeout)
+    s = run(plan, a.out, a.narrate, a.browser, a.headed, a.total_timeout, a.step_timeout, video_cfg)
     print(s["summary"], "| stopped:", s["stopped"] or "no", "| blocked hosts:", s["blocked_hosts"] or "none",
           "| video:", s["video"])
     return 0 if s["counts"]["FAIL"] == 0 and s["counts"]["BLOCKED"] == 0 else 1

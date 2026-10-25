@@ -30,7 +30,7 @@ Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE
 |---|---|---|
 | Goal loop | Plans, runs, verifies, refutes, files bugs and re-tests until the goal is met or a stop condition hits. A durable ledger means a restart loses nothing. | `/qa-goal`, `scripts/qa_loop.py` |
 | Automated tests, twice | Each scenario runs as two independent Playwright passes. If the passes disagree, the result is **FLAKY**, never a pass. | `qa-automation-tester`, `record.py` |
-| Narrated video evidence | Native Playwright video with a caption bar, a natural voice (edge-tts, EN/AR), `.srt` captions, a trace and screenshots. | `/qa-record` |
+| Narrated video evidence | Native Playwright video with a caption bar, a natural voice (edge-tts, EN/AR), `.srt` captions, a trace and screenshots. Still or idle stretches (waiting, slow typing) are sped up or cut to a cap per video type, captions kept in sync, original kept. | `/qa-record`, `scripts/video_trim.py` |
 | Code + security review | A read-only reviewer, plus an OWASP-style security reviewer (secrets, dependency audit, headers/cookies/CORS). Only finding *counts* ever leave the machine. | `/qa-security` |
 | Load testing | Ramp, soak and spike profiles with p95/p99/error-rate thresholds and a chart, on allow-listed hosts only. A k6 template is included. | `/qa-load` |
 | Live regression | Read-only flows on staging/live, with Chrome DevTools console, network and performance evidence on failure. | `qa-live-regression-recorder` |
@@ -137,6 +137,7 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 - `live: true` for production sites (the run stops before any input);
 - the narrator voice and language;
 - the loop limits;
+- video length: `video.type` (simple / standard / walkthrough, caps about 60 / 150 / 240 s in `video.types`), `video.max_seconds` (a ceiling for every type) and `video.trim` (`speed`, `cut` or `off`). A plan can set `"video_type"`. The report shows the original and final length;
 - the delivery channels (each one names the **env var** holding its secret);
 - desktop control (`desktop.enabled`, `allow_apps`);
 - optional Odoo tickets (`odoo:`): `scripts/odoo_ticket.py read` gives the QA lead the ticket and the other agents' log-note analysis, `post` writes the result back as one log note, `move` sets the stage, and `watch` starts a run when a ticket enters a chosen stage (`docs/SCHEDULED-MODE.md`). The Odoo API key is your own (`keys.py set ODOO_API_KEY`); writes are dry-run unless `--send` and the owner approves.
@@ -157,13 +158,14 @@ Read more in `docs/OPERATING-RULES.md`, `docs/HOOKS-IN-PLAIN-LANGUAGE.md` and `d
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **187 pass / 0 fail / 1 skipped** (188 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 8.1): **198 pass / 0 fail / 1 skipped** (199 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
 - the privacy filter and the report counter (including FLAKY and the "all green" check);
 - the loop's stop conditions, ledger resume and old-run reading;
 - the HTML report;
+- video length limits and dead-time trimming on small ffmpeg-generated videos: freeze detection, captions shifted in sync, idle stretches under a caption left alone, the over-cap fallback, the kept original, one-line config errors (`tests/test_video_trim.py`);
 - every notifier (mocked HTTP and dry-run);
 - the load tester against a local server;
 - the security wrappers;
