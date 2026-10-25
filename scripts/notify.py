@@ -83,6 +83,11 @@ def validate_config(cfg, path="qa.config.yaml"):
         for field in ("to",):
             if field in ch and not isinstance(ch[field], list):
                 raise ConfigError(f"config error at notify.{name}.{field}: expected a list of recipients")
+    import video_trim
+    try:
+        video_trim.settings(cfg.get("video"))
+    except video_trim.ConfigError as exc:
+        raise ConfigError(str(exc)) from None
     return cfg
 
 
@@ -158,7 +163,7 @@ def find_video(run_dir):
     best = None
     for root, _d, files in os.walk(run_dir):
         for f in files:
-            if f.endswith(".mp4"):
+            if f.endswith(".mp4") and not f.endswith(".original.mp4"):  # send the trimmed video, not the kept original
                 p = os.path.join(root, f)
                 if not best or os.path.getmtime(p) > os.path.getmtime(best):
                     best = p
