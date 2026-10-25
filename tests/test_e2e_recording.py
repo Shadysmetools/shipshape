@@ -40,6 +40,8 @@ def test_smoke_recording_of_local_page(tmp_path, demo_site):
     assert float(info["format"]["duration"]) > 3
     assert (tmp_path / "out" / "trace.zip").stat().st_size > 0
     assert (tmp_path / "out" / "captions.srt").read_text(encoding="utf-8").startswith("1\n")
+    vs = s["video_seconds"]  # the length check ran on the real recording
+    assert vs["original_seconds"] >= vs["final_seconds"] > 3 and vs["cap_seconds"] == 150
 
 
 def test_never_pay_rule_stops_the_run(tmp_path, demo_site):

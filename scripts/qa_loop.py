@@ -185,6 +185,7 @@ def run_round(run_dir, ledger, narrate=False, passes=2, runner=None):
                 r["evidence"] = r.get("evidence", "").split(" + ")[0]
         runs.append({"plan": plan, "dir": os.path.relpath(outs[0], run_dir).replace(os.sep, "/"), "passes": passes,
                      "summary": res[0].get("summary"), "video": res[0].get("video"), "results": rows,
+                     "video_seconds": res[0].get("video_seconds"), "video_note": res[0].get("video_note"),
                      "console": res[0].get("console", []), "network": res[0].get("network", []), "stopped": res[0].get("stopped"), "mixed": res[0].get("mixed"),
                      "base_url": res[0].get("base_url"), "target_notes": res[0].get("target_notes", []),
                      "narration": [r.get("narration_note") or ("voice" if r.get("narrated") else "no voice") for r in res]})
