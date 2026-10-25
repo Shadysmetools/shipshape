@@ -52,3 +52,19 @@ notify:
   webhook:
     enabled: false
     url: {env: QA_WEBHOOK_URL}
+# Optional: Odoo tickets as QA input and output (scripts/odoo_ticket.py). Remove the block if you don't use Odoo.
+# The API key is yours: env var ODOO_API_KEY or `python scripts/keys.py set ODOO_API_KEY` (asked for once when missing).
+# It never goes in this file.
+odoo:
+  url: https://<your-odoo-host>               # https only (http is accepted for 127.0.0.1/localhost)
+  db: <database>
+  user: qa-bot@example.com                    # the Odoo login of the QA user that owns the API key
+  model: helpdesk.ticket                      # or project.task
+  # api_key: {env: ODOO_API_KEY}              # only to use another env var / key name
+  trigger:
+    stages: [Pending Internal Testing]        # `odoo_ticket.py watch` starts a run when a ticket enters one of these
+    # entry_field: date_last_stage_update     # what tells one stage entry from the next
+    # launch: [claude, -p, "/qa-goal {goal}"] # what a watch --launch starts ({goal}, {ticket}, {file})
+  on_pass: Client Testing                     # stage after a passing run
+  on_fail: In Progress                        # stage after a failing run
+  auto_move: false                            # true = the hook guard lets `move --send` to on_pass/on_fail through without asking
