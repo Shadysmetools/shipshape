@@ -8,6 +8,15 @@
 - RPC: `POST /web/dataset/call_kw` (or `/json/2/` on newer series) with the model, method, args and kwargs; never store session cookies or API keys in files that get committed.
 - Never hard-code record ids in test scripts; re-resolve after every database refresh.
 
+## Tickets as QA input and output (`scripts/odoo_ticket.py`)
+- `read <ticket>`: description, stage and log notes as plain text, read-only. The QA lead plans from the analysis other agents left in the log notes.
+- `post <ticket> --run qa-runs/<run>`: one log note (`N pass / M fail / K flaky / B blocked`, the bug list, the video link), after the privacy filter. A second post for the same run and ticket is refused (`odoo-posted.json` in the run folder).
+- `move <ticket> --stage NAME`: the stage is found by name in the ticket's own team/project; zero or several matches are refused. Writes, then reads back.
+- `watch`: see `docs/SCHEDULED-MODE.md`.
+- `post` and `move` are dry-run unless `--send`, and the hook guard routes `--send` to the owner's permission prompt (`auto_move: true` lets moves to `on_pass` / `on_fail` through). Dry runs never contact Odoo.
+- Settings in the `odoo:` block of `qa.config.yaml`. The API key belongs to the user: `ODOO_API_KEY` env var or `keys.py set ODOO_API_KEY`, asked for once when missing; a key written in the config is refused. ShipShape ships no keys.
+- Transport: Odoo's `/jsonrpc` endpoint (`common.authenticate` + `object.execute_kw`), stdlib only; the `/json/2/` API is not implemented. `https` only, except `127.0.0.1`/`localhost`.
+
 ## Module layout
 ```
 your_module/
