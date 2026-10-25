@@ -138,7 +138,8 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 - the narrator voice and language;
 - the loop limits;
 - the delivery channels (each one names the **env var** holding its secret);
-- desktop control (`desktop.enabled`, `allow_apps`).
+- desktop control (`desktop.enabled`, `allow_apps`);
+- optional Odoo tickets (`odoo:`): `scripts/odoo_ticket.py read` gives the QA lead the ticket and the other agents' log-note analysis, `post` writes the result back as one log note, `move` sets the stage, and `watch` starts a run when a ticket enters a chosen stage (`docs/SCHEDULED-MODE.md`). The Odoo API key is your own (`keys.py set ODOO_API_KEY`); writes are dry-run unless `--send` and the owner approves.
 
 ## Safety, by design
 
@@ -156,7 +157,7 @@ Read more in `docs/OPERATING-RULES.md`, `docs/HOOKS-IN-PLAIN-LANGUAGE.md` and `d
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **137 pass / 0 fail / 1 skipped** (138 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **187 pass / 0 fail / 1 skipped** (188 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
@@ -167,6 +168,7 @@ The suite covers:
 - the load tester against a local server;
 - the security wrappers;
 - the narrator, the Odoo checker and the stack lock;
+- the Odoo ticket bridge (`tests/test_odoo_ticket.py`) against a mocked Odoo JSON-RPC: read, post (privacy-filtered, once per run), move (stage narrowed to the ticket's team), watch (one run per stage entry, baseline, time limit) and the hook gates;
 - the desktop gates (mock and dry-run);
 - the plugin manifests and hooks;
 - dry-runs of all three workflows with mocked agents;
@@ -183,6 +185,7 @@ The suite covers:
 | Marketplace add + plugin install in a clean, isolated Claude config | see `docs/INSTALL-PROOF.md` |
 | Recording, narration, report, loop, load (native engine), security wrappers, timesheet, Odoo check | run here against the local example app |
 | Real sends to Telegram/WhatsApp/Slack/email | **not run**; tested with mocked HTTP and dry-run only |
+| Odoo ticket read/post/move/watch on a real Odoo | **not run**; tested against a mocked JSON-RPC server only (how a real Odoo renders the note is unchecked) |
 | k6 engine, gitleaks, pip-audit, osv-scanner | used when installed; not installed on the build machine, so only the "skipped" path is tested |
 | Desktop control on a real desktop | gated smoke test, not run in CI |
 | Prompt and agent hooks judged live by a model | JSON validated; the model's judgement is not unit-testable. The deterministic commit-scan hook is tested through its literal hooks.json command |
