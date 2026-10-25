@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **Timesheet: human-equivalent hours mode** (issue #5). `timesheet.py --mode human` estimates what a professional human tester with Odoo experience would spend, from what the logs show was done: scenario runs, UI steps, bugs filed, files changed, commits, meetings. Rates are per team in `templates/human-rates.example.json` (`--rates`), with an optional per-task complexity multiplier; identical repeated tool calls count once. `timesheet.mode`, `timesheet.rule` and `timesheet.rates` are read from `qa.config.yaml` (`--config`); the rule is recorded in the workbook. Summary, Daily and Evidence show measured and human-equivalent hours side by side, with the reasoning per row. Odoo import rows use the human figure only in human mode, and the JSON states `hours_basis`. The default stays `measured`. Tests: `tests/test_timesheet.py`.
 - **Missing API keys are asked for, not just reported.** New `scripts/keys.py`: lookup order env var, OS keychain (`keyring`), then `~/.config/shipshape/secrets/keys.json` (outside the repo, owner-only, blocked by the read guard). When a key is missing, a masked window (or hidden terminal prompt) asks once and saves it. Used by every delivery channel on a real `--send` (never on a dry run) and by the OpenAI/ElevenLabs narrator. `keys.py check --config` lists what a project needs. `SMEKIT_NO_PROMPT=1` turns prompts off. Values are never printed. Tests: `tests/test_keys.py`.
 
 ## 0.1.1 (2026-10-24)

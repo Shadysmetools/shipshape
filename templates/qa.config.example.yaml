@@ -16,6 +16,10 @@ loop:
 # Optional public links (e.g. a private bucket or intranet path) used when a file is too big to attach
 report_link_base: ""
 video_link_base: ""
+timesheet:
+  mode: measured                          # measured (agent session time) | human (human-equivalent, from templates/human-rates.example.json)
+  rule: ""                                # the team's billing rule in its own words; written into the workbook
+  rates: ""                               # path to the team's rates JSON (empty = the template)
 notify:
   telegram:
     enabled: false
