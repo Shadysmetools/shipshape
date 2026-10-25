@@ -5,7 +5,8 @@ No model call: it reads the hook input on stdin, classifies the action and answe
   deny  reading or printing secret files (.env, secrets/, *.pem, *.key, ~/.ssh, credential stores),
         commands that carry a literal key/token, force-pushes and pushes to main/master/production,
         and commits whose staged diff adds secrets or personal data (hook_commit_scan)
-  ask   actions that need the owner's own click: merges (git merge, gh pr merge), deletes of
+  ask   actions that need the owner's own click: merges (git merge, gh pr merge), filing a GitHub
+        issue (gh issue create, used by /qa-issue), deletes of
         branches/remote refs/files outside tmp or run folders, `notify.py --send` (after a
         deterministic config check), `desktop.py run` without --dry-run (after the desktop gate),
         `odoo_ticket.py post|move --send` (a move to the on_pass/on_fail stage is allowed only
@@ -64,6 +65,8 @@ def classify_command(cmd, cwd):
             return "deny", "Commit blocked: staged changes add possible secrets or personal data: " + "; ".join(hits[:10])
     if re.search(r"\bgit\b[^|;&]*\bmerge\b|\bgh\s+pr\s+merge\b", cmd):
         return "ask", "A merge needs the owner's own OK in this conversation (a relayed approval does not count)."
+    if re.search(r"\bgh\s+issue\s+create\b", cmd):
+        return "ask", "Filing a GitHub issue is an outward post: the owner clicks to approve it (show the dry-run preview first)."
     if re.search(r"\bgit\s+branch\s+(?:-D|-d|--delete)\b", cmd):
         return "ask", "Deleting a branch needs the owner's own OK."
     if re.search(r"(?:^|[\s|;&(])(?:rm\s+-[a-zA-Z]*r[a-zA-Z]*f?|rm\s+-[a-zA-Z]*f[a-zA-Z]*r|Remove-Item\b[^|;&]*(?:-Recurse|-Force)|rmdir\s+/s|del\s+/s)", cmd, re.I):

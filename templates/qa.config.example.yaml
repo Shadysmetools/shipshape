@@ -25,6 +25,8 @@ loop:
   max_rounds: 3
   budget_minutes: 120
   passes: 2                               # every scenario twice; disagreement = FLAKY
+issues:
+  repo: Shadysmetools/shipshape           # where /qa-issue files ShipShape bugs and gaps (owner/repo; a team fork can point at its own)
 video:                                  # short, to-the-point evidence videos (scripts/video_trim.py)
   type: standard                          # default type; a plan can set "video_type": "simple"
   max_seconds: 240                        # hard ceiling for every type (4 min)

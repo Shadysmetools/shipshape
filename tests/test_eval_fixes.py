@@ -181,7 +181,9 @@ def guard(tool, **ti):
     ("cat .env.example", None), ("cat README.md", None), ("ls -la", None), ("python scripts/report.py r.json", None),
     ("git push --force origin feat", "deny"), ("git push origin main", "deny"), ("git push -f", "deny"), ("git push origin feat/x", None),
     ("echo ghp_" + "A" * 36, "deny"),
-    ("git merge feat/x", "ask"), ("gh pr merge 12 --squash", "ask"), ("git branch -D old", "ask"), ("git push origin --delete old", "ask"),
+    ("git merge feat/x", "ask"), ("gh pr merge 12 --squash", "ask"),
+    ("gh issue create -R Shadysmetools/shipshape --label from-field --title t --body-file qa-issue/body.md", "ask"),
+    ("gh issue view 9 -R Shadysmetools/shipshape", None), ("gh issue list --label from-field", None), ("git branch -D old", "ask"), ("git push origin --delete old", "ask"),
     ("rm -rf src/", "ask"), ("rm -rf qa-runs/old", None), ("Remove-Item -Recurse -Force build", None), ("Remove-Item -Recurse -Force C:\\proj\\src", "ask"),
 ])
 def test_9_hook_guard_decisions(cmd, decision):
