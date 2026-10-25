@@ -29,3 +29,7 @@ nul
 # Rendered videos live on GitHub Releases, not in history
 docs/media/tutorial/out/*.mp4
 docs/media/tutorial/out/ocr-report-*.jsonl
+
+# ShipShape key store (scripts/keys.py) - never commit
+keys.json
+keys.json.tmp

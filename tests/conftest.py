@@ -47,3 +47,16 @@ def serve(directory, headers=None):
 def demo_site():
     with serve(os.path.join(ROOT, "examples", "demo-app")) as url:
         yield url
+
+
+@pytest.fixture(autouse=True)
+def _no_real_keys(tmp_path, monkeypatch):
+    """No test opens a key window, reads the user's real key store or keychain (keys.py)."""
+    monkeypatch.setenv("SMEKIT_NO_PROMPT", "1")
+    monkeypatch.setenv("SMEKIT_NO_KEYRING", "1")
+    monkeypatch.setenv("SMEKIT_KEYS_DIR", str(tmp_path / "_keys"))
+    try:
+        import keys
+        keys._DECLINED.clear()
+    except ImportError:
+        pass

@@ -8,8 +8,9 @@ Channels: telegram, whatsapp (meta | twilio), slack, email, webhook.
 - Only channels present AND enabled in the project config are used. A channel
   name that is not in the config is refused (the plain-language hook enforces
   the same in conversation).
-- Secrets come ONLY from environment variables (or the OS keychain through the
-  optional "keyring" package): the config holds env var NAMES, never values.
+- Secrets come from environment variables, or from keys the user saved with
+  scripts/keys.py (OS keychain or ~/.config/shipshape/secrets): the config holds
+  key NAMES, never values. A real --send asks for a missing key once.
 - File-size limits are respected per channel: the video is compressed with
   ffmpeg if it is too big, then a link is sent instead if it is still too big.
 - Security findings are never sent in detail: only "N security findings, see
@@ -19,6 +20,7 @@ Channels: telegram, whatsapp (meta | twilio), slack, email, webhook.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import mimetypes
 import random
@@ -35,6 +37,9 @@ import urllib.parse
 import urllib.request
 import uuid
 from email.message import EmailMessage
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import keys  # noqa: E402
 
 MB = 1024 * 1024
 LIMITS = {"telegram": 50 * MB, "whatsapp": 16 * MB, "slack": 0, "email": 20 * MB, "webhook": 0}
@@ -108,7 +113,8 @@ def secret(spec, env=None):
     if not spec:
         return None
     if spec.get("env"):
-        return clean(env.get(spec["env"]))
+        # env var first, then the key the user saved with keys.py (keychain or ~/.config/shipshape)
+        return clean(env.get(spec["env"])) or (keys.lookup(spec["env"], env) if env is os.environ else None)
     if spec.get("keyring"):
         try:
             import keyring
@@ -306,7 +312,17 @@ def step_key(run_dir, channel, idx, url, fields, files):
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
-def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=None, out=print):
+def ask_missing_keys(name, ch, asker=None):
+    """Before a real send: ask the user (masked window / hidden prompt) for any key this channel names but nobody set."""
+    for field, spec in ch.items():
+        if isinstance(spec, dict) and isinstance(spec.get("env"), str) and not secret(spec):
+            try:
+                keys.get(spec["env"], f"Needed to send to {name} ({field}).", asker=asker)
+            except ValueError:  # not a usable key name: the send then fails with the usual credential message
+                pass
+
+
+def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=None, out=print, asker=None):
     """Plan (and with send=True, perform) delivery. Returns a list of per-channel results."""
     env = os.environ if env is None else env
     http_fn = http_fn or http
@@ -322,6 +338,8 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
             results.append({"channel": name, "status": "SKIPPED", "detail": "disabled in config"})
             continue
         kind = ch.get("type", name)
+        if send and env is os.environ:
+            ask_missing_keys(name, ch, asker)
         link = cfg.get("report_link_base") and cfg["report_link_base"].rstrip("/") + "/" + os.path.basename(os.path.abspath(run_dir)) + "/report.html"
         text = summary_text(run_dir, ch.get("lang", lang), link, (ch.get("templates") or {}).get(ch.get("lang", lang)))
         report = os.path.join(run_dir, "report.html") if os.path.exists(os.path.join(run_dir, "report.html")) else None
@@ -342,7 +360,9 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
         else:
             results.append({"channel": name, "status": "REFUSED", "detail": f"unknown type {kind}"})
             continue
-        shown = [(m, redact(u), {k: (v if k not in ("caption", "text") else v[:60] + "...") for k, v in f.items()} if isinstance(f, dict) else f,
+        secrets_used = [v for v in (secret(sp, env) for sp in ch.values() if isinstance(sp, dict) and sp.get("env")) if v and len(v) >= 6]
+        mask = lambda t: functools.reduce(lambda acc, v: acc.replace(v, "<SECRET>"), secrets_used, t)  # noqa: E731
+        shown = [(m, mask(redact(u)), {k: (v if k not in ("caption", "text") else v[:60] + "...") for k, v in f.items()} if isinstance(f, dict) else f,
                   {k: os.path.basename(v) for k, v in fl.items() if v}) for m, u, f, fl in calls]
         if not send:
             out(f"[dry-run] {name}: {len(calls)} call(s)")
@@ -351,7 +371,7 @@ def deliver(run_dir, cfg, lang="en", send=False, only=None, env=None, http_fn=No
             results.append({"channel": name, "status": "DRY-RUN", "calls": len(calls), "video": bool(video), "link": bool(vlink)})
             continue
         if not cred:
-            results.append({"channel": name, "status": "FAIL", "detail": "credential env var is not set"})
+            results.append({"channel": name, "status": "FAIL", "detail": "credential env var is not set (or save it with: python scripts/keys.py set <NAME>)"})
             continue
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import stack_lock  # one sender per channel at a time (singleton per alert stream)
