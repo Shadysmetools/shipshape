@@ -122,7 +122,7 @@ def test_6_narration_note_and_report_badge(tmp_path, monkeypatch):
         def speak(text, *a, **k):
             raise RuntimeError("narration failed after 3 tries: offline")
 
-    monkeypatch.setitem(sys.modules, "tts", Fail)
+    monkeypatch.setattr(narrator.tts, "speak", Fail.speak)  # the recorder speaks through narrator (voice profiles, #6)
     plan = dict(PLAN, base_url="about:blank", steps=[{"do": "goto", "url": "about:blank", "say": "hello"}])
     s = record.run(plan, str(tmp_path / "out"), narrate=True, total_timeout=30, step_timeout=5)
     assert s["narrated"] is False and "not synthesized" in s["narration_note"]

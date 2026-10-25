@@ -5,10 +5,22 @@ base_url: http://127.0.0.1:8765/          # local or staging only
 allow_hosts: [127.0.0.1, localhost]       # the recorder, load test and header check refuse anything else
 live: false                               # true = a client's live site: the run stops before any input
 narrator:
-  provider: edge                          # edge (free) | openai (OPENAI_API_KEY) | elevenlabs (ELEVENLABS_API_KEY)
+  provider: edge                          # used only without voice profiles: edge (free) | openai | elevenlabs
   lang: en                                # en | ar
   voice: en-US-AndrewNeural               # ar: ar-EG-ShakirNeural or ar-EG-SalmaNeural
   rate: "-5%"
+  # Named voice profiles: pick one per run with --voice <name> (record.py, slides_video.py, narrator.py report/mix).
+  # Use a cloned voice ONLY if its owner agreed (consent) to it narrating these videos.
+  # A voice id is a literal or {env: NAME}; NAME is looked up through scripts/keys.py (env, keychain, user store).
+  # API keys never go in this file: OPENAI_API_KEY / ELEVENLABS_API_KEY come from keys.py.
+  # If a paid provider refuses (no key, HTTP 402 paid plan, offline), the free edge voice speaks instead and
+  # results.json narration_note says why.
+  default_voice: narrator                 # used when --voice is not given
+  voices:
+    narrator: {provider: edge, voice: en-US-AndrewNeural, lang: en}
+    narrator-ar: {provider: edge, voice: ar-EG-SalmaNeural, lang: ar}
+    # sara: {provider: elevenlabs, voice: {env: ELEVENLABS_VOICE_ID_SARA}, lang: ar}   # Sara's own cloned voice, with her consent
+    # openai: {provider: openai, voice: alloy, lang: en}
 loop:
   max_rounds: 3
   budget_minutes: 120
