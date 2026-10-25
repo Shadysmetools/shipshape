@@ -128,3 +128,39 @@ def test_guard_hook_command_from_hooks_json_blocks(tmp_path):
     p = subprocess.run(["bash", "-c", cmd], input=payload, capture_output=True, text=True, timeout=60)
     assert p.returncode == 0, p.stderr[-300:]
     assert json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+@node
+def test_full_qa_workflow_uses_overriding_agents_and_asks_external():
+    """A team agent in a role replaces the kit agent everywhere it is dispatched; a refuter question about
+    unclear behaviour goes to the matching external subagent, is recorded with qa_loop.py consult, and the
+    claim is refuted again with the answer."""
+    import crew
+    cfg = {"agents": {"roles": {"refuter": "our-refuter", "code-reviewer": "our-reviewer"},
+                      "external": [{"name": "odoo-consultant", "role": "odoo-expert", "when": "Odoo behaviour unclear",
+                                    "subagent": "odoo-functional-consultant"},
+                                   {"name": "analyst", "role": "ticket-analyst", "when": "criteria missing", "session": "ticket-analyst"}]}}
+    crew.validate_agents(cfg)
+    r = run_wf("full-qa.workflow.js", {"goal": "g", "pluginRoot": ROOT, "plans": ["p.json"],
+                                       "agents": crew.roles(cfg, ROOT), "external": crew.external(cfg),
+                                       "mockFailures": [{"id": "B1", "case": "TC-1", "title": "a"}, {"id": "B2", "case": "TC-2", "title": "invoice"}]})
+    assert r["ok"], r["unknownPhases"]
+    types = r["agentTypes"]
+    assert "our-refuter" in types and "our-reviewer" in types and "odoo-functional-consultant" in types
+    assert "smetools-agent-kit:qa-refuter" not in types and "smetools-agent-kit:qa-code-reviewer" not in types
+    assert "smetools-agent-kit:qa-automation-tester" in types          # roles not overridden keep the kit agent
+    ask = [c for c in r["calls"] if c["agentType"] == "odoo-functional-consultant"]
+    assert len(ask) == 1 and "B2" in ask[0]["label"] and "qa_loop.py\" consult" in ask[0]["prompt"] and "--id B2" in ask[0]["prompt"]
+    assert any(c["label"] == "refute B2 again" for c in r["calls"])
+    assert sorted(r["result"]["survivingBugs"]) == ["B1", "B2"] and r["result"]["openQuestions"] == []
+
+
+@node
+def test_full_qa_workflow_returns_questions_it_cannot_ask():
+    r = run_wf("full-qa.workflow.js", {"goal": "g", "pluginRoot": ROOT, "plans": ["p.json"],
+                                       "external": [{"name": "analyst", "role": "odoo-expert", "when": "w", "via": "session", "to": "ticket-analyst"}],
+                                       "mockFailures": [{"id": "B2", "case": "TC-2", "title": "invoice"}]})
+    q = r["result"]["openQuestions"]
+    assert q == [{"bug": "B2", "question": "Should a draft invoice be editable?", "ask": "analyst via session ticket-analyst"}]
+    assert r["result"]["survivingBugs"] == []
+    assert any("question(s) for the QA lead" in m for m in r["logs"])

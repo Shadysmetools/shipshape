@@ -44,3 +44,24 @@ notify:
   webhook:
     enabled: false
     url: {env: QA_WEBHOOK_URL}
+# Crew roles and external agents (docs/CUSTOMIZE-AGENTS.md). Check with: python scripts/crew.py roles
+agents:
+  # Put your own agent in a kit role. Roles: code-reviewer, security-reviewer, automation-tester, load-tester,
+  # live-regression, desktop-tester, demo-video, refuter, odoo-expert, timesheet. Unlisted roles keep the kit's agent.
+  roles:
+    odoo-expert: odoo-functional-consultant   # your .claude/agents/odoo-functional-consultant.md
+  # Agents the crew may ASK when the expected behaviour is unclear. Every question and answer goes in the
+  # ledger (qa_loop.py consult). No secrets here: a command reads its own credentials on its own machine.
+  external:
+    - name: odoo-consultant
+      role: odoo-expert
+      when: expected Odoo behaviour (accounting, stock, invoicing flows) is not written in the ticket
+      subagent: odoo-functional-consultant    # a Claude Code agent name
+    - name: ticket-analyst
+      role: ticket-analyst
+      when: the acceptance criteria of a ticket are missing or contradict each other
+      session: ticket-analyst                 # a running Claude Code session, reached with SendMessage
+    - name: internal-dev
+      role: developer
+      when: a failure might be intended behaviour of a recent change
+      command: [python, tools/ask_dev.py]     # question on stdin, answer on stdout

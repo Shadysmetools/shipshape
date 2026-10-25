@@ -6,6 +6,7 @@
 - **Round**: every plan runs twice (two independent passes). If both pass, the case passes; if both fail, it fails; if they disagree, it is FLAKY.
 - **Ledger**: `qa-runs/<date>-<goal>/ledger.json` holds rounds, bugs (suspected → verified/refuted → filed → fixed → retest-pass), human gates, load and security summaries, and elapsed time. Every command reads and writes it, so a crash or a new session resumes exactly.
 - **Stop conditions**: goal met, max rounds, budget minutes, no progress (same failures twice with no fix in between), or an open human gate (a payment page, input on a live site, an approval).
+- **Consults**: questions the crew put to an external agent and the answers, in `ledger.json` `consults` (`qa_loop.py consult`) and in the HTML report.
 - **Two-agent bar**: a failure becomes a bug only after a verifier reproduces it and the refuter fails to kill it.
 - **Evidence**: video with voice and captions, `.srt`, Playwright trace, screenshots, console/network lists, and the HTML report.
 
@@ -23,6 +24,8 @@
 | qa-refuter | tries to kill every claim | verdicts only |
 | timesheet-agent | measured hours → Excel + Odoo rows | files only |
 | odoo-expert | Odoo modules, migrations, staging safety, deploys | code (with review) |
+
+Each row is a **role**. A team can put its own agent in any role, and register outside agents the crew may ask (an Odoo consultant, a ticket analyst) when the expected behaviour is unclear; every question and answer is kept in the ledger. See `CUSTOMIZE-AGENTS.md`.
 
 ## Workflows
 `workflows/full-qa.workflow.js` runs: review + security (parallel) → automated ×2 → load → live regression → refute (verify, then refute, per failure) → report → dry-run delivery. `demo.workflow.js` covers script → capture → privacy + viewer review. `regression-loop.workflow.js` repeats rounds until stopped. Run them from Claude Code with the Workflow tool, passing `pluginRoot` (the commands do this for you).
