@@ -288,10 +288,12 @@ def main(argv=None):
     s = sub.add_parser("set", help="ask for a key and save it")
     s.add_argument("name")
     s.add_argument("--reason", default="")
+    s.add_argument("--stdin", action="store_true", help="read the key from standard input (the user pasted it in the chat)")
     c = sub.add_parser("check", help="which keys a project needs and which are missing")
     c.add_argument("--config", default="qa.config.yaml")
     c.add_argument("--ask", action="store_true", help="ask for each missing key")
     sub.add_parser("list", help="stored key names (never values)")
+    sub.add_parser("voices", help="ElevenLabs voices this key can use: name, id, type (no key printed)")
     d = sub.add_parser("delete")
     d.add_argument("name")
     a = ap.parse_args(argv)
@@ -303,6 +305,17 @@ def main(argv=None):
         except ValueError as exc:
             print(f"ERROR: {exc}")
             return 2
+        if a.stdin:
+            value = clean(sys.stdin.read())
+            if not value:
+                print(f"{a.name}: nothing on stdin, not saved")
+                return 1
+            try:
+                print(f"{a.name}: saved ({save(a.name, value)})")
+            except StoreError as exc:
+                print(f"ERROR: {exc}")
+                return 2
+            return 0
         if not can_prompt():
             print("ERROR: prompts are off (SMEKIT_NO_PROMPT=1); set the environment variable instead")
             return 2
@@ -343,6 +356,30 @@ def main(argv=None):
         kr = _keyring()
         print(f"keychain: {'available (service ' + SERVICE + ')' if kr else 'not available (pip install keyring)'}")
         print(f"user store: {store_file()}")
+        return 0
+
+    if a.cmd == "voices":
+        key = lookup("ELEVENLABS_API_KEY")
+        if not key:
+            print("ELEVENLABS_API_KEY: MISSING (save it first: keys.py set ELEVENLABS_API_KEY)")
+            return 1
+        import urllib.error
+        import urllib.request
+        try:
+            req = urllib.request.Request("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                voices = json.load(r).get("voices", [])
+        except urllib.error.HTTPError as exc:
+            print(f"ElevenLabs refused the key: HTTP {exc.code}")
+            return 1
+        except OSError as exc:
+            print(f"ElevenLabs not reachable: {type(exc).__name__}")
+            return 1
+        for v in voices:
+            kind = v.get("category", "")
+            note = "  (library voice: needs a paid ElevenLabs plan via the API)" if kind == "professional" else ""
+            print(f"{v.get('name', '?')} | {v.get('voice_id', '?')} | {kind}{note}")
+        print(f"{len(voices)} voices")
         return 0
 
     if a.cmd == "delete":

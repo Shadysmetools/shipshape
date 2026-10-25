@@ -212,3 +212,24 @@ def test_guard_allows_key_cli(cmd):
 def test_suite_never_touches_real_store():
     # the autouse fixture in conftest points every test at a temp store with prompts off
     assert os.environ["SMEKIT_NO_PROMPT"] == "1" and "_keys" in os.environ["SMEKIT_KEYS_DIR"]
+
+
+# ---- /qa-setup interview: a key pasted in the chat is saved from stdin, never echoed
+def test_set_from_stdin_saves_without_echo(store):
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    r = subprocess.run([sys.executable, KEYS, "set", "ELEVENLABS_API_KEY", "--stdin"], input="  sk_pasted_in_chat_123\n",
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and "saved (file)" in r.stdout and "sk_pasted" not in r.stdout + r.stderr
+    assert keys.lookup("ELEVENLABS_API_KEY") == "sk_pasted_in_chat_123"
+    empty = subprocess.run([sys.executable, KEYS, "set", "ELEVENLABS_API_KEY", "--stdin"], input="", capture_output=True, text=True, env=env)
+    assert empty.returncode == 1
+
+
+def test_voices_needs_a_key(store):
+    r = subprocess.run([sys.executable, KEYS, "voices"], capture_output=True, text=True, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    assert r.returncode == 1 and "MISSING" in r.stdout
+
+
+def test_setup_command_never_writes_keys_into_project():
+    text = open(os.path.join(ROOT, "commands", "qa-setup.md"), encoding="utf-8").read()
+    assert "--stdin" in text and "never" in text.lower() and "keys.py voices" in text
