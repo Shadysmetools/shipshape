@@ -8,3 +8,5 @@ description: Send QA results automatically - use for "send the video to Telegram
 3. `python ${CLAUDE_PLUGIN_ROOT}/scripts/notify.py <run> --config qa.config.yaml [--lang ar]` is a dry-run. Show it, then add `--send` after the owner says send.
 
 Limits: Telegram 50 MB, WhatsApp 16 MB (sent as a link), email 20 MB. Bigger videos are compressed first, then sent as a link (`video_link_base`). Security details never leave the machine: the count only.
+
+Knowcap (`type: knowcap`) uploads the video and report to the user's own project with their own `KNOWCAP_API_KEY` (prepare-upload, PUT, confirm-upload, then a move into the project and an optional folder) and returns a Knowcap link: a private project link, or a public share link with `share: true`. The privacy filter and `live: true` refuse the upload. Each file is uploaded once; a re-run reuses it.

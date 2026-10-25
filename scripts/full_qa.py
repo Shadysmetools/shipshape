@@ -79,6 +79,14 @@ def main(argv=None):
         except record.PlanError as exc:
             print(f"ERROR: {exc}")
             return 2
+    if a.config and os.path.exists(a.config):  # the recorder reads its video length settings from the same file
+        import video_trim
+        try:
+            video_trim.settings(video_trim.load_video_section(a.config))
+        except video_trim.ConfigError as exc:
+            print(f"ERROR: {exc}")
+            return 2
+        os.environ["SMEKIT_QA_CONFIG"] = os.path.abspath(a.config)
     step("1/7 history: what earlier runs say")
     h = qa_history.history(qa_history.load_runs(a.root))
     if h["trend"]:

@@ -9,6 +9,7 @@
 - **Consults**: questions the crew put to an external agent and the answers, in `ledger.json` `consults` (`qa_loop.py consult`) and in the HTML report.
 - **Two-agent bar**: a failure becomes a bug only after a verifier reproduces it and the refuter fails to kill it.
 - **Evidence**: video with voice and captions, `.srt`, Playwright trace, screenshots, console/network lists, and the HTML report.
+- **Video length**: after recording, `scripts/video_trim.py` finds still stretches (ffmpeg `freezedetect`) and slow steps (`type`, `wait`) that no caption covers, and plays them 8x faster or cuts them. The `.srt` is shifted to match. Each video type has a cap (`video.types`: simple 60 s, standard 150 s, walkthrough 240 s; `video.max_seconds` is a ceiling for all). If the speed-up is not enough, idle stretches are cut. Real activity is never cut: a video still over its cap is marked "over cap" in the report, and the fix is to split the plan. The untouched recording stays next to it as `<name>.original.mp4` with `captions.original.srt`.
 
 ## The crew
 | Agent | Role | Writes? |
@@ -35,6 +36,7 @@ See `OPERATING-RULES.md`. In short: test data only, never pay, stop before input
 
 ## FAQ
 - **The video has no voice.** edge-tts needs network. The run still produces captions; re-run with network, and cached clips are reused.
+- **The video is too long / over cap.** Pick a longer `video_type` in the plan, or split the scenario into two plans. Try a dry run: `python scripts/video_trim.py <video.mp4> --srt captions.srt --type simple --dry-run`.
 - **A case is FLAKY.** Look at both passes in the report; the refuter checks timing, waits and data. Fix the test or the product, then it must pass twice.
 - **The loop stopped with "no progress".** The same cases failed in two rounds with no fix recorded. Mark a fix with `qa_loop.py bug --id B1 --status fixed`, or change the plan.
 - **A human gate is open.** Read the reason (for example the never-pay rule). Do the step yourself or approve it, then `qa_loop.py gate --close G1`.

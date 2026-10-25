@@ -1,0 +1,17 @@
+{
+  "_comment": "Human-equivalent rates for timesheet.py --mode human. Minutes a professional human tester with Odoo experience would spend per activity found in the logs. Each team copies this file and changes the numbers; the file path and every rate are written into the workbook's Method sheet. Sources: tool = a tool call (regex on the tool name, optional regex on its input); file = distinct files changed by the matching tools; commit = git commits in the block; request = typed requests matching the regex. Identical repeated tool calls count once (the agent iterating is not new work); set \"distinct\": false on an activity to count every call. A block with nothing counted is 0 h; block_minimum_minutes lifts a block where something was done. Unit test runs (pytest) are developer work, not tester scenarios, so they are not counted here.",
+  "rule": "Bill what a professional human tester with Odoo experience would spend on the work done, not how long the agent ran.",
+  "block_minimum_minutes": 15,
+  "activities": {
+    "scenario": {"label": "test scenario run", "minutes": 10, "source": "tool", "tool": "^(Bash|PowerShell)$",
+                 "match": ["record\\.py|full_qa\\.py|qa_loop\\.py|playwright test|odoo-bin .*--test-enable"]},
+    "step": {"label": "UI step", "minutes": 1, "source": "tool",
+             "tool": "browser_(click|type|navigate|select_option|fill_form|press_key|hover|drag)|form_input|^computer$"},
+    "bug": {"label": "bug filed", "minutes": 15, "source": "tool", "tool": "^(Bash|PowerShell|Skill)$",
+            "match": ["gh issue create|bug-creator"]},
+    "file": {"label": "file changed", "minutes": 5, "source": "file", "tool": "^(Edit|Write|MultiEdit|NotebookEdit)$"},
+    "commit": {"label": "commit", "minutes": 5, "source": "commit"},
+    "meeting": {"label": "meeting", "minutes": 30, "source": "request", "match": ["\\bmeeting\\b|\\bstand-?up\\b|call with"]}
+  },
+  "task_multiplier": {"_comment": "Optional ticket complexity per task id, e.g. \"1002\": 1.5", "1002": 1.5}
+}
