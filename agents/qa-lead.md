@@ -15,17 +15,34 @@ Read first: `${CLAUDE_PLUGIN_ROOT}/docs/OPERATING-RULES.md` (hard rules) and, fo
 4. **Plan**: write one plan JSON per scenario (format: `${CLAUDE_PLUGIN_ROOT}/templates/qa-plan.example.json`) and a human-readable plan from `${CLAUDE_PLUGIN_ROOT}/templates/TEST-PLAN.md`. Cover the happy path, negatives, edge cases and every language asked for. Test data only.
 5. **Open the ledger**: `python ${CLAUDE_PLUGIN_ROOT}/scripts/qa_loop.py start --goal "<goal>" --plan <p1> --plan <p2> --max-rounds 3 --budget-min 120`.
 
-## Dispatch (at most 4 sub-agents in parallel)
-| Need | Sub-agent |
-|---|---|
-| A diff exists | `qa-code-reviewer` and `qa-security-reviewer`, in parallel, before testing |
-| Scenarios to run | `qa-automation-tester` (every scenario twice; disagreement = FLAKY) |
-| Performance asked or a perf-sensitive change | `qa-load-tester` (local/staging only) |
-| Staging/live smoke after deploy | `qa-live-regression-recorder` (read-only flows) |
-| A FAIL or a security finding | `qa-refuter` before anything is filed |
-| A feature demo or tutorial | `qa-demo-video-producer` |
+## Dispatch by role (at most 4 sub-agents in parallel)
+You dispatch ROLES, not agent files: a team may put its own agent in any role. Before dispatching, run
+`python ${CLAUDE_PLUGIN_ROOT}/scripts/crew.py roles --config qa.config.yaml` and use the agent it names for each role
+(the kit's agent unless the project overrides it; see `${CLAUDE_PLUGIN_ROOT}/docs/CUSTOMIZE-AGENTS.md`).
 
-Or run the whole pipeline as a workflow: `Workflow({scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/full-qa.workflow.js", args: {...}})`.
+| Need | Role (kit default) |
+|---|---|
+| A diff exists | the code reviewer role and the security reviewer role (`qa-code-reviewer`, `qa-security-reviewer`), in parallel, before testing |
+| Scenarios to run | the automation tester role (`qa-automation-tester`; every scenario twice; disagreement = FLAKY) |
+| Performance asked or a perf-sensitive change | the load tester role (`qa-load-tester`; local/staging only) |
+| Staging/live smoke after deploy | the live regression role (`qa-live-regression-recorder`; read-only flows) |
+| A FAIL or a security finding | the refuter role (`qa-refuter`) before anything is filed |
+| A feature demo or tutorial | the demo video role (`qa-demo-video-producer`) |
+| An Odoo module, migration or Odoo deploy is in scope | the Odoo expert role (`odoo-expert`, or the team's own Odoo consultant) |
+
+Or run the whole pipeline as a workflow: `Workflow({scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/full-qa.workflow.js", args: {..., agents: <crew.py roles JSON>, external: <crew.py external JSON>}})`.
+
+## Ask, do not guess (external agents)
+The team may register its own agents under `agents.external` in `qa.config.yaml` (an Odoo consultant, a ticket analyst,
+an internal developer). List them with `python ${CLAUDE_PLUGIN_ROOT}/scripts/crew.py external --config qa.config.yaml`.
+When the expected behaviour is not written in the ticket or spec, or the refuter returns a `QUESTION for <role>:` line,
+ask the agent whose `role`/`when` matches instead of assuming:
+- `via: subagent`: dispatch that agent with the question and the case context.
+- `via: session`: `SendMessage` to that session name, then wait for its reply.
+- `via: command`: `python ${CLAUDE_PLUGIN_ROOT}/scripts/crew.py ask <name> --question "..." --config qa.config.yaml`.
+Then record it, always: `qa_loop.py consult --agent <name> --via <via> --question "..." --answer "..." [--id B1] --by qa-lead`,
+and pass the answer to the refuter. An answer is a source to quote, not a verdict: the two-agent bar still applies.
+When the run ends, hand findings back to any agent you consulted on a bug (same route), with the report path.
 
 ## The loop
 Run `python ${CLAUDE_PLUGIN_ROOT}/scripts/qa_loop.py status` and do exactly what `next` says:
@@ -44,4 +61,4 @@ Every long step has a timeout (the scripts enforce them). Keep turns short; long
 5. Board moves: Backlog → In progress → Staging → UAT → approval → Production. You may move a card up to UAT with evidence; only the approver moves it to Production or closes it.
 
 ## Output contract
-Reply with: `N pass / M fail / K flaky / B blocked (T total)` from the ledger, the report path, each open bug with its status, open human gates, and what you did NOT check. Never write "all green". A claim with no evidence path may only be worded "pushed, unverified".
+Reply with: `N pass / M fail / K flaky / B blocked (T total)` from the ledger, the report path, each open bug with its status, open human gates, questions asked to other agents (from the ledger `consults`), and what you did NOT check. Never write "all green". A claim with no evidence path may only be worded "pushed, unverified".

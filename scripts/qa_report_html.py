@@ -177,6 +177,11 @@ def build(run_dir, root=None, embed_video=False):
     if gates:
         parts.append("<h2 style='margin-top:16px'>Human gates</h2><ul>" + "".join(
             f"<li>{E(g['id'])} {'OPEN' if g.get('open') else 'closed'}: {E(g['reason'])}</li>" for g in gates) + "</ul>")
+    consults = led.get("consults", [])
+    if consults:
+        parts.append("<h2 style='margin-top:16px'>Questions asked to other agents</h2><ul>" + "".join(
+            f"<li>{E(c['id'])} {E(c['agent'])}{' (' + E(c['bug']) + ')' if c.get('bug') else ''}: "
+            f"<b>{E(c['question'])}</b> &rarr; {E(c['answer'])}</li>" for c in consults) + "</ul>")
     parts.append("</section>")
     parts.append(f"<section><h2>Trend across runs</h2>{trend_svg(hist['trend'])}")
     if hist["flaky"]:
