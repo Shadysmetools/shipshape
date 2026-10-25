@@ -42,7 +42,10 @@ steps.json is a list of steps (or {"name": ..., "steps": [...]}). Verbs:
   mask     {"rect": [fx0, fy0, fx1, fy1]} (fractions; add "within": {control} to measure inside a dialog)
            | {"control": {...}} | {"above_control": {...}} | {"outside_control": {...}, "pad": 8}
            | {"regions": [<several of these>], "replace": true} (swap masks with no gap)
-           a dark privacy overlay over part of the window (it shows in the video and the screenshots).
+           a blurred (pixelated) privacy overlay over part of the window (it shows in the video and the
+           screenshots). control + "largest": true picks the biggest match; "optional": true skips a region that
+           is not on screen. Masks may cover at most desktop.mask_max_cover (default 40%) of the window and never
+           the controls the next steps type into or read; "allow_large": true for a deliberate full cover.
            Mask BEFORE a step that opens something private (a file dialog), then narrow it.
   unmask   remove all overlays
   record_start  start the screen recording of the target window (default: right after the first
@@ -223,6 +226,69 @@ def outside(win, hole, pad=0):
     hl, ht, hr, hb = hole[0] - pad, hole[1] - pad, hole[2] + pad, hole[3] + pad
     rects = [(l, t, r, max(t, ht)), (l, min(b, hb), r, b), (l, max(t, ht), max(l, hl), min(b, hb)), (min(r, hr), max(t, ht), r, min(b, hb))]
     return [x for x in rects if x[2] > x[0] and x[3] > x[1]]
+
+
+MASK_MAX_COVER = 0.40  # default: masks may hide at most 40% of the window; the app under test stays visible
+
+
+def clip_rect(r, win):
+    """r clipped to win, or None when nothing is left."""
+    c = (max(r[0], win[0]), max(r[1], win[1]), min(r[2], win[2]), min(r[3], win[3]))
+    return c if c[2] > c[0] and c[3] > c[1] else None
+
+
+def subtract(r, hole):
+    """r minus hole: up to four rects."""
+    h = clip_rect(hole, r)
+    if not h:
+        return [r]
+    out = [(r[0], r[1], r[2], h[1]), (r[0], h[3], r[2], r[3]), (r[0], h[1], h[0], h[3]), (h[2], h[1], r[2], h[3])]
+    return [x for x in out if x[2] > x[0] and x[3] > x[1]]
+
+
+def union_area(rects):
+    """Area covered by rects (overlaps counted once)."""
+    rects = [r for r in rects if r[2] > r[0] and r[3] > r[1]]
+    xs = sorted({v for r in rects for v in (r[0], r[2])})
+    total = 0
+    for x0, x1 in zip(xs, xs[1:]):
+        spans = sorted((r[1], r[3]) for r in rects if r[0] <= x0 and r[2] >= x1)
+        cov, end = 0, None
+        for a, b in spans:
+            if end is None or a > end:
+                cov += b - a
+                end = b
+            elif b > end:
+                cov += b - end
+                end = b
+        total += cov * (x1 - x0)
+    return total
+
+
+def fit_masks(masks, win, keep=(), max_cover=MASK_MAX_COVER):
+    """Masks with the controls under test (keep) cut out of them, so a mask can never hide
+    the control a step types into or reads. Raises StepFailed when they would still cover more than max_cover of
+    the window (None = no cap, for a deliberate full cover such as a Save As dialog). -> (rects, fraction)."""
+    out = []
+    for m in masks:  # not clipped: a dialog may stick out of the window and must stay covered
+        pieces = [tuple(int(v) for v in m)]
+        for k in keep:
+            pieces = [p for q in pieces for p in subtract(q, k)]
+        out += [p for p in pieces if p[2] > p[0] and p[3] > p[1]]
+    win_area = max(1, (win[2] - win[0]) * (win[3] - win[1]))
+    frac = union_area([c for c in (clip_rect(p, win) for p in out) if c]) / win_area
+    if max_cover is not None and frac > max_cover:
+        raise StepFailed(f"the privacy masks would hide {frac:.0%} of the window (limit {max_cover:.0%}): mask only the "
+                         "private parts (sidebar, chat list, account), or set \"allow_large\": true on a deliberate full cover")
+    return out, frac
+
+
+def pixelate(img, block=22, blur=6):
+    """A PIL image made unreadable but still recognisable as UI: coarse blocks, then a blur."""
+    from PIL import Image, ImageFilter
+    w, h = img.size
+    small = img.resize((max(1, w // block), max(1, h // block)), Image.BILINEAR)
+    return small.resize((w, h), Image.NEAREST).filter(ImageFilter.GaussianBlur(blur))
 
 
 def even_region(rect, bounds=None):
@@ -507,14 +573,20 @@ class Backend:
             if isinstance(spec, dict) and spec.get("in") is not None:
                 parent = self.find_control(spec["in"], 0, required=False)
                 scopes = [parent] if parent is not None else []
+            largest = isinstance(spec, dict) and spec.get("largest")  # several match (two "Sidebar" groups): the biggest
+            hits = []
             for scope in scopes:
                 try:
                     kw = {"control_type": spec["role"]} if isinstance(spec, dict) and spec.get("role") else {}
                     for el in scope.descendants(**kw):
                         if self._match(el, spec) and el.is_visible():
-                            return el
+                            if not largest:
+                                return el
+                            hits.append(el)
                 except Exception:  # noqa: BLE001 (the tree changes while we walk it)
                     pass
+            if hits:
+                return max(hits, key=lambda e: (lambda r: (r[2] - r[0]) * (r[3] - r[1]))(self.rect_of(e)))
             if time.time() > end:
                 if not required:
                     return None
@@ -604,6 +676,29 @@ class Backend:
         if self.os == "Windows" and not self.on_target():
             raise Refused(f"the focus left the window under test mid-way ({done}/{total} characters typed): stopped")
 
+    def focused_pid(self):
+        """Process id of the UIA element that has the keyboard focus (None if unknown)."""
+        try:
+            from pywinauto.uia_defines import IUIA
+            return int(IUIA().iuia.GetFocusedElement().CurrentProcessId)
+        except Exception:  # noqa: BLE001
+            return None
+
+    def target_pid(self):
+        import win32process
+        return win32process.GetWindowThreadProcessId(self.target)[1]
+
+    def check_keyboard_focus(self):
+        """Before the first character: the foreground window is the target itself, and the element that will
+        receive the keys belongs to the target's process. A terminal tab, another app or an overlay never does."""
+        if self.os != "Windows":
+            return
+        if not self.on_target():
+            raise Refused("the window under test is not in front: typing refused")
+        fp = self.focused_pid()
+        if fp is None or fp != self.target_pid():
+            raise Refused("the keyboard focus is not inside the window under test: typing refused")
+
     def type(self, text, control=None):
         if control is not None:
             el = self.find_control(control)
@@ -612,6 +707,7 @@ class Backend:
         if self.os != "Windows":
             self.pg.write(text, interval=0.03)
             return
+        self.check_keyboard_focus()
         from pywinauto.keyboard import send_keys
         for n, ch in enumerate(text):  # the focus is checked before EVERY character
             self._guard(n, len(text))
@@ -621,6 +717,7 @@ class Backend:
 
     def key(self, keys):
         self._guard()
+        self.check_keyboard_focus()
         self.pg.hotkey(*keys)
         self._last_sent = time.time()
 
@@ -709,24 +806,39 @@ class Backend:
         with mss.MSS() as s:
             raw = s.grab({"left": l, "top": t, "width": r - l, "height": b - t})
             img = Image.frombytes("RGB", raw.size, raw.rgb)
+        for m in masks:  # private regions: blurred (the overlay already is; this repeats it in the file)
+            c = clip_rect((m[0] - l, m[1] - t, m[2] - l, m[3] - t), (0, 0, r - l, b - t))
+            if c:
+                img.paste(pixelate(img.crop(c)), c[:2])
         d = ImageDraw.Draw(img)
-        for m in list(masks) + self.password_rects():
+        for m in self.password_rects():  # passwords: solid black, never a blur
             d.rectangle([m[0] - l, m[1] - t, m[2] - l, m[3] - t], fill=(20, 20, 20))
         img.save(path)
+
+    def blurred_snapshot(self, rect, path):
+        """Save a pixelated picture of a screen rect (for the privacy overlay). The sharp pixels stay in memory."""
+        import mss
+        from PIL import Image
+        l, t, r, b = rect
+        with mss.MSS() as s:
+            raw = s.grab({"left": l, "top": t, "width": r - l, "height": b - t})
+        pixelate(Image.frombytes("RGB", raw.size, raw.rgb)).save(path)
+        return path
 
 
 class Overlay:
     """Always-on-top, click-through, non-activating boxes: the banner and the privacy masks.
     Runs as `desktop.py _overlay` in its own process so the run never blocks on Tk."""
 
-    def __init__(self, boxes, enabled=True, ready_timeout=8.0):
+    def __init__(self, boxes, enabled=True, ready_timeout=8.0, restore=None):
         self.p = None
         self.ready = False
         if enabled and boxes:
             fg = 0
             if platform.system() == "Windows":
                 import ctypes
-                fg = ctypes.windll.user32.GetForegroundWindow() or 0  # handed back by the overlay process
+                # the focus is handed back to the window under test, never to whatever was in front (a terminal)
+                fg = restore or ctypes.windll.user32.GetForegroundWindow() or 0
             try:
                 self.p = subprocess.Popen([sys.executable, os.path.abspath(__file__), "_overlay", json.dumps(boxes), str(fg)],
                                           stdout=subprocess.PIPE, text=True)
@@ -769,8 +881,14 @@ def overlay_main(boxes_json, restore_fg=0):
         w.attributes("-topmost", True)
         w.geometry(f"{max(1, r - l)}x{max(1, b - t)}+{l}+{t}")
         w.configure(bg=bx.get("bg", "#141414"))
-        tk.Label(w, text=bx.get("text", ""), bg=bx.get("bg", "#141414"), fg=bx.get("fg", "#9a9a9a"),
-                 font=("Segoe UI", int(bx.get("size", 10)), "bold" if bx.get("bold") else "normal")).place(relx=0.5, rely=0.5, anchor="center")
+        if bx.get("image"):  # a blurred picture of what is under the box: the UI stays recognisable, text does not
+            img = tk.PhotoImage(file=bx["image"], master=w)
+            w._img = img
+            tk.Label(w, image=img, text=bx.get("text", ""), compound="center", fg=bx.get("fg", "white"), bd=0,
+                     font=("Segoe UI", int(bx.get("size", 10)), "bold")).place(x=0, y=0, relwidth=1, relheight=1)
+        else:
+            tk.Label(w, text=bx.get("text", ""), bg=bx.get("bg", "#141414"), fg=bx.get("fg", "#9a9a9a"),
+                     font=("Segoe UI", int(bx.get("size", 10)), "bold" if bx.get("bold") else "normal")).place(relx=0.5, rely=0.5, anchor="center")
         if platform.system() == "Windows":
             w.update_idletasks()
             hwnd = ctypes.windll.user32.GetParent(w.winfo_id()) or w.winfo_id()
@@ -790,9 +908,10 @@ def overlay_main(boxes_json, restore_fg=0):
 class Notice(Overlay):
     """The visible banner while ShipShape controls the PC (kept for older callers)."""
 
-    def __init__(self, enabled=True, rect=None):
+    def __init__(self, enabled=True, rect=None, restore=None):
         rect = rect or [20, 20, 860, 56]
-        super().__init__([{"rect": rect, "text": BANNER_TEXT, "bg": "#b3261e", "fg": "white", "bold": True, "size": 11}], enabled)
+        super().__init__([{"rect": rect, "text": BANNER_TEXT, "bg": "#b3261e", "fg": "white", "bold": True, "size": 11}], enabled,
+                         restore=restore)
 
 
 def record_cmd(out_mp4, seconds=None, system=None, fps=15, region=None):
@@ -812,6 +931,43 @@ def record_cmd(out_mp4, seconds=None, system=None, fps=15, region=None):
 
 
 # ------------------------------------------------------------------ the run
+def under_test(be, later):
+    """Screen rects of the controls the next steps type into, read or click (up to the next mask change):
+    a mask is never allowed to hide them."""
+    out = []
+    for s in later:
+        if s.get("do") in ("mask", "unmask"):
+            break
+        if s.get("do") in ("type", "read", "assert_text", "click") and s.get("control") is not None:
+            try:
+                el = be.find_control(s["control"], 0.5, required=False)
+                if el is not None:
+                    out.append(tuple(be.rect_of(el)))
+            except Exception:  # noqa: BLE001 - a control that is not there yet (a dialog) has nothing to keep
+                pass
+    return out
+
+
+def speech_lengths(steps):
+    """Seconds each narration line takes (the free edge voice, cached), so the run can pace itself: a line is
+    spoken to the end before the next one starts. Offline: a reading-speed estimate."""
+    out = {}
+    try:
+        sys.path.insert(0, HERE)
+        import narrator
+    except Exception:  # noqa: BLE001
+        narrator = None
+    for s in steps:
+        line = s.get("say")
+        if not line or line in out:
+            continue
+        try:
+            out[line] = float(narrator.say(line)[1])
+        except Exception:  # noqa: BLE001
+            out[line] = max(2.0, 0.4 * len(line.split()))
+    return out
+
+
 def _settings(cfg, step_timeout=None, run_timeout=None):
     d = (cfg or {}).get("desktop") or {}
     return float(step_timeout or d.get("step_timeout") or 20), float(run_timeout or d.get("run_timeout") or 180)
@@ -831,7 +987,10 @@ def run(steps, cfg, out, dry_run=False, backend=None, record=True, notice=True, 
         be.allow = gate.allow
     mine = own_pids()
     results, masks, saved, lines = [], [], {}, []
-    state = {"rec": None, "rec_t0": None, "banner": None, "mask_ov": None, "clip": None, "clip_saved": False}
+    state = {"rec": None, "rec_t0": None, "banner": None, "mask_ov": None, "clip": None, "clip_saved": False,
+             "speech_end": 0.0, "blur_dir": None}
+    max_cover = ((cfg or {}).get("desktop") or {}).get("mask_max_cover", MASK_MAX_COVER)
+    spoken = speech_lengths(steps) if narrate and real else {}
     t_run = time.time()
     done = threading.Event()
 
@@ -866,14 +1025,25 @@ def run(steps, cfg, out, dry_run=False, backend=None, record=True, notice=True, 
             rect = [l + max(0, (w - 900) // 2), t + h - 52, l + max(0, (w - 900) // 2) + min(900, w), t + h - 12]
         else:
             rect = None
-        state["banner"] = Notice(True, rect)
+        state["banner"] = Notice(True, rect, restore=getattr(be, "target", None))
         if getattr(be, "target", None):
             be.set_focus()
 
     def refresh_masks():
         """The new overlay is up before the old one goes, so nothing private shows in between."""
         old = state["mask_ov"]
-        state["mask_ov"] = Overlay([{"rect": list(m), "text": "hidden for privacy"} for m in masks]) if masks and real else None
+        boxes = []
+        if masks and real:
+            import tempfile
+            state["blur_dir"] = state["blur_dir"] or tempfile.mkdtemp(prefix="shipshape-mask-")
+            for k, m in enumerate(masks):
+                box = {"rect": list(m), "text": "private"}
+                try:  # a blurred picture of the region; a dark box only if the picture cannot be made
+                    box["image"] = be.blurred_snapshot(m, os.path.join(state["blur_dir"], f"m{time.time_ns()}-{k}.png"))
+                except Exception:  # noqa: BLE001
+                    box["text"] = "hidden for privacy"
+                boxes.append(box)
+        state["mask_ov"] = Overlay(boxes, restore=getattr(be, "target", None)) if boxes else None
         if state["mask_ov"] is not None and not state["mask_ov"].ready:
             state["mask_ov"].close()
             state["mask_ov"] = old  # keep the old masks up; the run stops rather than show what is behind
@@ -905,6 +1075,9 @@ def run(steps, cfg, out, dry_run=False, backend=None, record=True, notice=True, 
             if state[k]:
                 state[k].close()
                 state[k] = None
+        if state["blur_dir"]:
+            shutil.rmtree(state["blur_dir"], ignore_errors=True)
+            state["blur_dir"] = None
         if state["clip_saved"]:
             try:
                 be.clipboard_set(state["clip"])  # give the user back their clipboard
@@ -934,7 +1107,12 @@ def run(steps, cfg, out, dry_run=False, backend=None, record=True, notice=True, 
             to = min(float(s.get("timeout", step_to)), step_to * 3)
             entry = {"step": i + 1, "do": do, "target": s.get("app") or s.get("window"), "case": s.get("case")}
             if s.get("say") and state["rec_t0"]:
+                # one narrator at a time: a step with a line waits until the previous line has been spoken
+                time.sleep(max(0.0, state["speech_end"] - time.time()))
                 lines.append({"t": round(time.time() - state["rec_t0"], 2), "text": s["say"]})
+                state["speech_end"] = time.time() + spoken.get(s["say"], 0.0) + 0.3
+                if do in ("close", "minimize"):  # these stop the recording: let the line finish on video first
+                    time.sleep(max(0.0, state["speech_end"] - time.time()))
             row = None
             try:
                 if do in INPUT_VERBS and not dry_run:
@@ -1044,12 +1222,16 @@ def run(steps, cfg, out, dry_run=False, backend=None, record=True, notice=True, 
                         elif m.get("outside_control") is not None:
                             new.extend(outside(win, be.rect_of(be.find_control(m["outside_control"], to)), int(m.get("pad", 8))))
                         elif m.get("control") is not None:
-                            new.append(be.rect_of(be.find_control(m["control"], to)))
-                    if s.get("replace"):
-                        masks.clear()
-                    masks.extend(new)
+                            el = be.find_control(m["control"], min(to, 3.0) if m.get("optional") else to, required=not m.get("optional"))
+                            if el is not None:  # "optional": a private region that is not on screen needs no mask
+                                new.append(be.rect_of(el))
+                    win = be.target_rect()
+                    keep = [] if s.get("allow_large") else under_test(be, steps[i + 1:])
+                    combined, frac = fit_masks(([] if s.get("replace") else masks) + new, win, keep,
+                                               None if s.get("allow_large") else max_cover)
+                    masks[:] = combined
                     refresh_masks()
-                    entry["masks"] = len(masks)
+                    entry["masks"], entry["cover"] = len(masks), round(frac, 3)
                 elif do == "unmask":
                     masks.clear()
                     refresh_masks()

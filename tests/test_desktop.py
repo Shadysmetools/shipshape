@@ -4,6 +4,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import sys
 import time
 
@@ -416,6 +417,13 @@ def test_live_claude_desktop_type_check_clear_never_send():
     assert counts["PASS"] == 4 and counts["FAIL"] == counts["BLOCKED"] == 0, res
     assert os.path.getsize(os.path.join(out, "desktop.mp4")) > 10_000
     assert not any(e.get("do") == "key" and "enter" in str(e) for e in log_of(out))
+    mask = next(e for e in log_of(out) if e.get("do") == "mask")
+    assert mask["status"] == "DONE" and mask["cover"] < 0.40  # only the private parts are blurred
+    narrated = os.path.join(out, "desktop-narrated.mp4")
+    if os.path.exists(narrated):
+        streams = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0",
+                                  narrated], capture_output=True, text=True).stdout.split()
+        assert len(streams) == 1
 
 
 def test_typing_stops_the_moment_focus_leaves(monkeypatch):
@@ -425,8 +433,9 @@ def test_typing_stops_the_moment_focus_leaves(monkeypatch):
     monkeypatch.setitem(sys.modules, "pywinauto.keyboard", types.SimpleNamespace(send_keys=lambda k, **kw: sent.append(k)))
     be = object.__new__(desktop.Backend)
     be.os, be._last_sent, be.target = "Windows", 0.0, 1
-    checks = iter([True, True, True, False])
+    checks = iter([True, True, True, True, False])  # the first check is the pre-typing keyboard-focus check
     be.on_target = lambda fg=None: next(checks)
+    be.focused_pid = be.target_pid = lambda: 7
     with pytest.raises(desktop.Refused, match="3/10"):
         be.type("abcdefghij")
     assert sent == ["a", "b", "c"]
