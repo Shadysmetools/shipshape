@@ -1,6 +1,7 @@
 # ShipShape Python dependencies. Playwright is pinned to one minor so the installer never
 # re-downloads browsers behind your back (a new Playwright minor means a new Chromium build).
-# Extras: desktop control -> pyautogui, pywinauto (Windows); security -> pip-audit
+# Extras: desktop control -> pywinauto (Windows), pyautogui, mss, pillow (installer --with-desktop / -WithDesktop);
+#         security -> pip-audit
 playwright==1.63.*
 openpyxl>=3.1
 PyYAML>=6.0

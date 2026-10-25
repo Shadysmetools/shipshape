@@ -39,7 +39,7 @@ if ! "$PY" -m pip install --user -r "$ROOT/requirements.txt"; then
   echo "so the kit's 'python' commands use it:  export PATH=\"$HOME/.shipshape/venv/bin:\$PATH\""
 fi
 if [ "$WITH_DESKTOP" = 1 ]; then
-  "$PY" -m pip install pyautogui keyring
+  "$PY" -m pip install pyautogui mss pillow keyring
   case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$PY" -m pip install pywinauto ;; esac
 fi
 if [ "$WITH_SEC" = 1 ]; then "$PY" -m pip install pip-audit; fi

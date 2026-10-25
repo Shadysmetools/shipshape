@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo ShipShape ready: /qa-goal /qa-run /qa-record /qa-load /qa-security /qa-demo /qa-report /qa-deliver /timesheet /odoo-check",
+            "command": "echo ShipShape ready: /qa-goal /qa-run /qa-record /qa-desktop /qa-load /qa-security /qa-demo /qa-report /qa-deliver /timesheet /odoo-check",
             "timeout": 5
           }
         ]

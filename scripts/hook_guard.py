@@ -130,7 +130,8 @@ def check_desktop(cmd, cwd):
         cfg, path = _load_cfg(cmd, cwd)
         m = re.search(r"desktop\.py\s+run\s+(\"[^\"]+\"|'[^']+'|\S+)", cmd)
         steps_path = m.group(1).strip("\"'") if m else None
-        steps = json.load(open(steps_path if os.path.isabs(steps_path) else os.path.join(cwd or os.getcwd(), steps_path), encoding="utf-8"))
+        plan = steps_path if os.path.isabs(steps_path) else os.path.join(cwd or os.getcwd(), steps_path)
+        steps = desktop.load_steps(plan) + (desktop.load_cleanup(plan) or [])  # a list, or {"steps": [...], "cleanup": [...]}
         gate = desktop.Gate(cfg)
         for s in steps:
             gate.check(s)
