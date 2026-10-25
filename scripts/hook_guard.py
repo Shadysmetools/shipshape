@@ -27,6 +27,9 @@ SECRET_PATH = re.compile(r"(?i)(?:^|[\s/\\\"'])(?:\.env(?:\.[\w-]+)?|[\w.-]*secr
 SECRET_LITERAL = re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-(?:ant-)?[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|"
                             r"AKIA[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{30,}|\d{8,10}:[A-Za-z0-9_-]{35}|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,})")
 READERS = re.compile(r"(?i)(?:^|[\s|;&(])(?:cat|type|less|more|head|tail|Get-Content|gc|strings|bat|xxd|hexdump|grep|rg|findstr|Select-String)\b")
+# ShipShape's own key store (scripts/keys.py): any mention next to a reader or open() is blocked, globs included
+KEY_STORE = re.compile(r"(?i)keys\.json|SMEKIT_KEYS_DIR|shipshape.secrets")
+OPENS = re.compile(r"(?i)\bopen\s*\(|read_text\s*\(|ReadAllText")
 EXAMPLE = re.compile(r"(?i)\.env\.(?:example|sample|template)|templates?[/\\]|placeholder")
 TMP_DIRS = re.compile(r"(?i)(?:^|[\s\"'])(?:\./|\.\\)?(?:tmp|temp|qa-runs|qa-evidence|build|dist|node_modules|__pycache__|\.pytest_cache)(?:[/\\][^\s\"']*)?(?=$|[\s\"'])")
 
@@ -41,6 +44,8 @@ def classify_command(cmd, cwd):
     """Return (decision, reason) for a shell command, or None to allow."""
     if SECRET_LITERAL.search(cmd):
         return "deny", "The command contains a literal key or token. Secrets reach scripts only as environment variables."
+    if KEY_STORE.search(cmd) and (READERS.search(cmd) or OPENS.search(cmd)):
+        return "deny", "Reading ShipShape's key store is blocked. Use: python scripts/keys.py list|check (names only)."
     if READERS.search(cmd) and SECRET_PATH.search(cmd) and not EXAMPLE.search(cmd):
         return "deny", "Reading or printing a secrets file is blocked. Read it in code and print booleans or field names only."
     if re.search(r"\bgit\b[^|;&]*\bpush\b", cmd):

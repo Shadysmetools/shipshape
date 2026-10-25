@@ -25,6 +25,7 @@ import sys
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import keys  # noqa: E402
 import tts  # noqa: E402
 
 VOICES = {
@@ -48,10 +49,12 @@ def provider():
 def say(text, lang="en", voice=None, rate="-5%", prov=None):
     """Return (mp3 path, seconds). Falls back to edge-tts if a paid provider has no key."""
     prov = prov or provider()
-    if prov == "openai" and os.environ.get("OPENAI_API_KEY"):
+    # A paid provider was chosen on purpose: a missing key is asked for once (masked window), then saved.
+    if prov == "openai" and keys.get("OPENAI_API_KEY", "Chosen narrator voice provider: OpenAI."):
         return _http_tts(text, "openai", voice or VOICES[lang]["openai"])
-    if prov == "elevenlabs" and os.environ.get("ELEVENLABS_API_KEY") and (voice or os.environ.get("ELEVENLABS_VOICE_ID")):
-        return _http_tts(text, "elevenlabs", voice or os.environ["ELEVENLABS_VOICE_ID"])
+    if prov == "elevenlabs" and keys.get("ELEVENLABS_API_KEY", "Chosen narrator voice provider: ElevenLabs.") \
+            and (voice or keys.get("ELEVENLABS_VOICE_ID", "Which ElevenLabs voice should narrate?")):
+        return _http_tts(text, "elevenlabs", voice or keys.lookup("ELEVENLABS_VOICE_ID"))
     p, d, _ = tts.speak(text, voice or VOICES.get(lang, VOICES["en"])["edge"], rate)
     return p, d
 
@@ -64,11 +67,11 @@ def _http_tts(text, prov, voice, urlopen=urllib.request.urlopen):
     if prov == "openai":
         req = urllib.request.Request("https://api.openai.com/v1/audio/speech", method="POST",
                                      data=json.dumps({"model": os.environ.get("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"), "voice": voice, "input": text}).encode(),
-                                     headers={"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}", "Content-Type": "application/json"})
+                                     headers={"Authorization": f"Bearer {keys.lookup('OPENAI_API_KEY')}", "Content-Type": "application/json"})
     else:
         req = urllib.request.Request(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}", method="POST",
                                      data=json.dumps({"text": text, "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")}).encode(),
-                                     headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "Content-Type": "application/json"})
+                                     headers={"xi-api-key": keys.lookup("ELEVENLABS_API_KEY"), "Content-Type": "application/json"})
     tmp = path + ".tmp.mp3"
     with urlopen(req, timeout=120) as r, open(tmp, "wb") as fh:
         fh.write(r.read())

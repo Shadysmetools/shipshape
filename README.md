@@ -210,7 +210,7 @@ docs/              GUIDE, OPERATING-RULES, BROWSERS, HOOKS-IN-PLAIN-LANGUAGE, TI
 ```
 
 ## FAQ
-- **Do I need API keys?** No. Narration uses free edge-tts voices. OpenAI or ElevenLabs voices are optional, through env vars.
+- **Do I need API keys?** No. Narration uses free edge-tts voices. OpenAI or ElevenLabs voices and the delivery channels are optional. When one needs a key that isn't set, ShipShape asks for it in a masked window (or a hidden terminal prompt) and saves it on your computer only: the OS keychain if `keyring` is installed, otherwise `~/.config/shipshape/secrets/keys.json`. Env vars still win. Manage keys with `python scripts/keys.py set|check|list|delete`; set `SMEKIT_NO_PROMPT=1` for unattended runs.
 - **Will it touch my production site?** Only read-only flows, and only if you allow-list the host. Any input on a site marked `live: true` stops and asks.
 - **Arabic?** Set `narrator.lang: ar` (voices `ar-EG-ShakirNeural` / `ar-EG-SalmaNeural`). Delivery templates exist in EN and AR.
 - **Scheduled runs?** Off by default. See `docs/SCHEDULED-MODE.md`.

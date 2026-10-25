@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- **Missing API keys are asked for, not just reported.** New `scripts/keys.py`: lookup order env var, OS keychain (`keyring`), then `~/.config/shipshape/secrets/keys.json` (outside the repo, owner-only, blocked by the read guard). When a key is missing, a masked window (or hidden terminal prompt) asks once and saves it. Used by every delivery channel on a real `--send` (never on a dry run) and by the OpenAI/ElevenLabs narrator. `keys.py check --config` lists what a project needs. `SMEKIT_NO_PROMPT=1` turns prompts off. Values are never printed. Tests: `tests/test_keys.py`.
+
 ## 0.1.1 (2026-10-24)
 Fixes from the independent evaluation of 0.1.0 (score 6.5/10), in its order of impact.
 
