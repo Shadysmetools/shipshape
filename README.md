@@ -30,7 +30,7 @@ Written version: [QUICKSTART.md](QUICKSTART.md) · full walkthrough: [docs/GUIDE
 |---|---|---|
 | Goal loop | Plans, runs, verifies, refutes, files bugs and re-tests until the goal is met or a stop condition hits. A durable ledger means a restart loses nothing. | `/qa-goal`, `scripts/qa_loop.py` |
 | Automated tests, twice | Each scenario runs as two independent Playwright passes. If the passes disagree, the result is **FLAKY**, never a pass. | `qa-automation-tester`, `record.py` |
-| Narrated video evidence | Native Playwright video with a caption bar, a natural voice (edge-tts, EN/AR), `.srt` captions, a trace and screenshots. | `/qa-record` |
+| Narrated video evidence | Native Playwright video with a caption bar, a natural voice (edge-tts, EN/AR), `.srt` captions, a trace and screenshots. Still or idle stretches (waiting, slow typing) are sped up or cut to a cap per video type, captions kept in sync, original kept. | `/qa-record`, `scripts/video_trim.py` |
 | Code + security review | A read-only reviewer, plus an OWASP-style security reviewer (secrets, dependency audit, headers/cookies/CORS). Only finding *counts* ever leave the machine. | `/qa-security` |
 | Load testing | Ramp, soak and spike profiles with p95/p99/error-rate thresholds and a chart, on allow-listed hosts only. A k6 template is included. | `/qa-load` |
 | Live regression | Read-only flows on staging/live, with Chrome DevTools console, network and performance evidence on failure. | `qa-live-regression-recorder` |
@@ -137,8 +137,10 @@ Copy `templates/qa.config.example.yaml` to your project as `qa.config.yaml`. It 
 - `live: true` for production sites (the run stops before any input);
 - the narrator voice and language;
 - the loop limits;
+- video length: `video.type` (simple / standard / walkthrough, caps about 60 / 150 / 240 s in `video.types`), `video.max_seconds` (a ceiling for every type) and `video.trim` (`speed`, `cut` or `off`). A plan can set `"video_type"`. The report shows the original and final length;
 - the delivery channels (each one names the **env var** holding its secret);
-- desktop control (`desktop.enabled`, `allow_apps`).
+- desktop control (`desktop.enabled`, `allow_apps`);
+- optional Odoo tickets (`odoo:`): `scripts/odoo_ticket.py read` gives the QA lead the ticket and the other agents' log-note analysis, `post` writes the result back as one log note, `move` sets the stage, and `watch` starts a run when a ticket enters a chosen stage (`docs/SCHEDULED-MODE.md`). The Odoo API key is your own (`keys.py set ODOO_API_KEY`); writes are dry-run unless `--send` and the owner approves.
 
 ## Safety, by design
 
@@ -156,17 +158,19 @@ Read more in `docs/OPERATING-RULES.md`, `docs/HOOKS-IN-PLAIN-LANGUAGE.md` and `d
 ```bash
 python -m pytest            # runs tests/ (pytest.ini)
 ```
-Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 7): **137 pass / 0 fail / 1 skipped** (138 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
+Last run on Windows 11 (Python 3.12, Playwright 1.63, ffmpeg 8.1): **198 pass / 0 fail / 1 skipped** (199 collected). The skipped test is the real-desktop smoke test, which only runs with `SMEKIT_DESKTOP_SMOKE=1` so CI never controls a desktop.
 
 The suite covers:
 - timesheet measurement, including a mutation-proven regression test for the unsorted-timestamp bug that once produced negative hours;
 - the privacy filter and the report counter (including FLAKY and the "all green" check);
 - the loop's stop conditions, ledger resume and old-run reading;
 - the HTML report;
+- video length limits and dead-time trimming on small ffmpeg-generated videos: freeze detection, captions shifted in sync, idle stretches under a caption left alone, the over-cap fallback, the kept original, one-line config errors (`tests/test_video_trim.py`);
 - every notifier (mocked HTTP and dry-run);
 - the load tester against a local server;
 - the security wrappers;
 - the narrator, the Odoo checker and the stack lock;
+- the Odoo ticket bridge (`tests/test_odoo_ticket.py`) against a mocked Odoo JSON-RPC: read, post (privacy-filtered, once per run), move (stage narrowed to the ticket's team), watch (one run per stage entry, baseline, time limit) and the hook gates;
 - the desktop gates (mock and dry-run);
 - the plugin manifests and hooks;
 - dry-runs of all three workflows with mocked agents;
@@ -183,6 +187,7 @@ The suite covers:
 | Marketplace add + plugin install in a clean, isolated Claude config | see `docs/INSTALL-PROOF.md` |
 | Recording, narration, report, loop, load (native engine), security wrappers, timesheet, Odoo check | run here against the local example app |
 | Real sends to Telegram/WhatsApp/Slack/email | **not run**; tested with mocked HTTP and dry-run only |
+| Odoo ticket read/post/move/watch on a real Odoo | **not run**; tested against a mocked JSON-RPC server only (how a real Odoo renders the note is unchecked) |
 | k6 engine, gitleaks, pip-audit, osv-scanner | used when installed; not installed on the build machine, so only the "skipped" path is tested |
 | Desktop control on a real desktop | gated smoke test, not run in CI |
 | Prompt and agent hooks judged live by a model | JSON validated; the model's judgement is not unit-testable. The deterministic commit-scan hook is tested through its literal hooks.json command |

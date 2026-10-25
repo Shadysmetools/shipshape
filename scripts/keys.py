@@ -35,6 +35,7 @@ HINTS = {
     "ELEVENLABS_VOICE_ID": "ElevenLabs voice id (Voices > the voice > ID)",
     "OPENAI_API_KEY": "OpenAI API key",
     "KNOWCAP_API_KEY": "Knowcap API key (Settings > API Keys)",
+    "ODOO_API_KEY": "Odoo API key of the QA user (Odoo: Preferences > Account Security > New API Key)",
 }
 
 
@@ -263,7 +264,7 @@ def get(name, reason="", prompt=True, env=None, asker=None):
 
 
 def needed(cfg):
-    """Key names a project config refers to: every {env: NAME} under notify, plus narrator provider keys."""
+    """Key names a project config refers to: every {env: NAME} under notify, the odoo: key, plus narrator provider keys."""
     names = []
     for ch_name, ch in ((cfg or {}).get("notify") or {}).items():
         if not isinstance(ch, dict) or not ch.get("enabled", False):
@@ -271,6 +272,10 @@ def needed(cfg):
         for field, spec in ch.items():
             if isinstance(spec, dict) and isinstance(spec.get("env"), str):
                 names.append((spec["env"], f"notify.{ch_name}.{field}"))
+    odoo = (cfg or {}).get("odoo")
+    if isinstance(odoo, dict) and odoo.get("url"):
+        spec = odoo.get("api_key") or odoo.get("password") or {}
+        names.append(((spec.get("env") if isinstance(spec, dict) else None) or "ODOO_API_KEY", "odoo"))
     prov = (((cfg or {}).get("narrator") or {}).get("provider") or os.environ.get("SMEKIT_TTS_PROVIDER") or "edge").lower()
     for n in NARRATOR_KEYS.get(prov, []):
         names.append((n, f"narrator.{prov}"))

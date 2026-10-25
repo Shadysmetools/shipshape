@@ -25,6 +25,19 @@ Register-ScheduledTask -TaskName 'ShipShape nightly QA' -Action $act -Trigger $t
 ```
 A draft only: a person reviews it, and nothing is written to Odoo.
 
+## 4. Odoo stage trigger: `odoo_ticket.py watch`
+Start the QA cycle when an Odoo ticket enters a chosen stage (for example *Pending Internal Testing*). Configure the `odoo:` block in `qa.config.yaml` (`url`, `db`, `user`, `model`, `trigger.stages`, `on_pass`, `on_fail`, `auto_move: false`); the API key is the user's own (`ODOO_API_KEY`, saved with `keys.py set ODOO_API_KEY`).
+```
+python scripts/odoo_ticket.py watch --once --include-existing          # dry-run: what it would test, nothing saved
+python scripts/odoo_ticket.py watch --launch --interval 300 --minutes 600
+```
+- It polls the model for tickets in `trigger.stages` and starts **at most one run per ticket per stage entry**: the entry is the stage plus `date_last_stage_update`, kept in `qa-runs/odoo-watch.json`. The entry is recorded before the run starts, so a crash never starts it twice. A ticket that leaves and comes back is a new entry.
+- The first poll is a baseline: tickets already in the stage are recorded, not tested (`--include-existing` tests them).
+- With `--launch` it saves the ticket analysis (description + log notes) to `qa-runs/odoo-tickets/<id>-<time>.md` and runs `trigger.launch` (default `claude -p "/qa-goal <goal>"`, the goal names that file). Without `--launch` it only prints.
+- Time limits: `--minutes` for the whole watch, `--run-timeout` per run (default 2 h, capped by what is left). One watcher at a time (a lock).
+- Watch itself only reads from Odoo. Posting the result and moving the ticket are separate, gated writes (`post`, `move`, dry-run unless `--send`). A headless `claude -p` run cannot answer the owner's permission prompt, so in a watch-started run those writes stay dry-run, except a move to `on_pass` / `on_fail` when the project set `auto_move: true` deliberately.
+- Run it from Task Scheduler / cron like the jobs above, with `--minutes` below the scheduler's own limit, or with `/loop 15m python scripts/odoo_ticket.py watch --once --launch`.
+
 ## Rules for unattended runs
 - Delivery stays dry-run unless the project config enables a channel AND the schedule passes `--send` deliberately (the owner set it up).
 - Every scheduled job has a time limit (Task Scheduler `ExecutionTimeLimit`, `timeout` in cron).
