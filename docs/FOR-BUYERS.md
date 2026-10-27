@@ -1,6 +1,6 @@
 # ShipShape for buyers
 
-> **Draft.** The license, pricing and commercial terms are not set yet. The owner sets them (see [LICENSE-OPTIONS.md](../LICENSE-OPTIONS.md)). Nothing on this page is an offer.
+> **Draft.** ShipShape itself is open source under the [MIT License](../LICENSE): anyone may use it free. What a client pays for is setup, support and managed runs; pricing and commercial terms are not set yet. Nothing on this page is an offer.
 
 ## What ShipShape does for you
 

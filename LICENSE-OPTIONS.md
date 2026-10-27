@@ -1,6 +1,8 @@
-# License options (decision pending)
+# License options (decided: MIT)
 
-ShipShape has **no license yet**. `plugin.json` says `"license": "UNLICENSED"` and the repo has no `LICENSE` file. Until the owner picks one, the default copyright rules apply: people can read the public code, but they get no right to use, copy, change or resell it. **The owner decides.** This page only compares the options for a product that is sold. It is not legal advice, so have a lawyer check the final choice.
+**Decision, 27 Oct 2026:** the owner chose the **MIT License** (see [LICENSE](LICENSE)). The comparison below is kept for the record.
+
+Before this decision ShipShape had **no license**: `plugin.json` said `"license": "UNLICENSED"` and the repo had no `LICENSE` file. Until the owner picks one, the default copyright rules apply: people can read the public code, but they get no right to use, copy, change or resell it. **The owner decides.** This page only compares the options for a product that is sold. It is not legal advice, so have a lawyer check the final choice.
 
 ## The question
 ShipShape is meant to be sold to clients (see [docs/FOR-BUYERS.md](docs/FOR-BUYERS.md)), and the repo is public. The license decides whether a buyer, or anyone who finds the repo, can use it without paying, change it, or resell it.
