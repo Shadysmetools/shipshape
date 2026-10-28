@@ -159,7 +159,7 @@ Read more in `docs/OPERATING-RULES.md`, `docs/HOOKS-IN-PLAIN-LANGUAGE.md` and `d
 
 ## For buyers
 
-What ShipShape does for a client, the install path, support boundaries and the (placeholder) tiers: [docs/FOR-BUYERS.md](docs/FOR-BUYERS.md). ShipShape provides no API keys or third-party accounts; each user supplies their own, stored only on their computer. License options are compared in [LICENSE-OPTIONS.md](LICENSE-OPTIONS.md); the owner picks one. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
+What ShipShape does for a client, the install path, support boundaries and the (placeholder) tiers: [docs/FOR-BUYERS.md](docs/FOR-BUYERS.md). ShipShape provides no API keys or third-party accounts; each user supplies their own, stored only on their computer. ShipShape is open source under the [MIT License](LICENSE). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Tests
 
@@ -230,4 +230,4 @@ docs/              GUIDE, OPERATING-RULES, BROWSERS, HOOKS-IN-PLAIN-LANGUAGE, TI
 - **Arabic?** Set `narrator.lang: ar` (voices `ar-EG-ShakirNeural` / `ar-EG-SalmaNeural`). Delivery templates exist in EN and AR.
 - **Scheduled runs?** Off by default. See `docs/SCHEDULED-MODE.md`.
 
-See `QUICKSTART.md` for a 10-minute walkthrough and `docs/GUIDE.md` for the concepts. License: not chosen yet (`plugin.json` says `UNLICENSED`); the owner picks one before the public release. Options: [LICENSE-OPTIONS.md](LICENSE-OPTIONS.md).
+See `QUICKSTART.md` for a 10-minute walkthrough and `docs/GUIDE.md` for the concepts. License: [MIT](LICENSE).

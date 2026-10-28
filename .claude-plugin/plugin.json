@@ -16,6 +16,6 @@
     "timesheet",
     "odoo"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
   "icon": "assets/icon.png"
 }
