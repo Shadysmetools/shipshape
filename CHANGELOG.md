@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- **License: MIT** (#10). Added `LICENSE` (Copyright (c) 2026 SMEtools); `plugin.json` says `"license": "MIT"`; README, FOR-BUYERS and LICENSE-OPTIONS record the decision.
+- **License: MIT** (#10). Added `LICENSE` (Copyright (c) 2026 Shady Al-Halawani and SMEtools); `plugin.json` says `"license": "MIT"`; README, FOR-BUYERS and LICENSE-OPTIONS record the decision.
 - **Full-device control** (#20): ShipShape drives any app on the computer, not only the browser.
   - **Command and engines.** New `/qa-desktop "<goal in plain words>"` command. The `qa-desktop-tester` agent turns the goal into steps, dry-runs them, runs them twice on video and reports N pass / M fail. `scripts/desktop.py` is extended, not replaced. Windows UI Automation (pywinauto `uia`) is the primary engine; pyautogui pixels are the fallback. Claude computer use (`computer_toolset_20260801`, your own `ANTHROPIC_API_KEY` through `keys.py`) is documented as optional. ShipShape ships no keys.
   - **New steps:** `launch` (path, Start-menu name or PATH; `require_new`), `focus`, `minimize`, `close` (`only_if_launched`, `otherwise`), `wait_window`, `wait_text`, `read`, `clipboard_set`/`clipboard_get` (your clipboard is restored), `scroll`, `assert_text`/`assert_control`/`assert_window`, `mask`/`unmask`, `record_start`, multi-monitor `screenshot`, `stop_on_fail`, and a `cleanup` list that runs only when a run stops early.
