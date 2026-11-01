@@ -301,7 +301,8 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                     ok = status in want and (not s.get("expect_body") or s["expect_body"] in text)
                     note = f"{rq.get_method()} {s['path']} -> {status}; body: {text[:160]!r}"
                     if not ok:
-                        raise AssertionError(f"expected {want}, got {status}; body: {text[:120]!r}")
+                        why = (f"status {status} not in {want}" if status not in want else f"body does not contain {s['expect_body']!r}")
+                        raise AssertionError(f"{why}; body: {text[:120]!r}")
                     caption(f"PASS {s.get('case', '')}: {say or note}", "PASS")
                     results.append({"id": s.get("case", f"step-{i + 1}"), "title": say or do, "result": "PASS", "evidence": note})
                 elif do == "screenshot":
