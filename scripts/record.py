@@ -276,6 +276,34 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                     page.press(s.get("selector", "body"), s["key"])
                 elif do == "wait":
                     page.wait_for_timeout(min(int(s.get("ms", 1000)), step_timeout * 1000))
+                elif do == "api":
+                    # Direct HTTP check against the allow-listed host: status (and optional body substring)
+                    # is a PASS/FAIL case. Bearer token comes from an env var, never from the plan or report.
+                    import urllib.error
+                    import urllib.request
+                    hdrs = dict(s.get("headers") or {})
+                    if s.get("auth_env"):
+                        tok = os.environ.get(s["auth_env"])
+                        if not tok:
+                            raise PlanError(f"api step: environment variable {s['auth_env']} is not set")
+                        hdrs["Authorization"] = "Bearer " + tok
+                    body = json.dumps(s["json"]).encode() if "json" in s else None
+                    if body is not None:
+                        hdrs.setdefault("Content-Type", "application/json")
+                    rq = urllib.request.Request(urljoin(base, s["path"]), body, hdrs, method=s.get("method", "GET"))
+                    try:
+                        with urllib.request.urlopen(rq, timeout=30) as resp:
+                            status, text = resp.status, resp.read(65536).decode("utf-8", "replace")
+                    except urllib.error.HTTPError as he:
+                        status, text = he.code, he.read(65536).decode("utf-8", "replace")
+                    want = s.get("expect_status", 200)
+                    want = want if isinstance(want, list) else [want]
+                    ok = status in want and (not s.get("expect_body") or s["expect_body"] in text)
+                    note = f"{rq.get_method()} {s['path']} -> {status}; body: {text[:160]!r}"
+                    if not ok:
+                        raise AssertionError(f"expected {want}, got {status}; body: {text[:120]!r}")
+                    caption(f"PASS {s.get('case', '')}: {say or note}", "PASS")
+                    results.append({"id": s.get("case", f"step-{i + 1}"), "title": say or do, "result": "PASS", "evidence": note})
                 elif do == "screenshot":
                     path = os.path.join(out, f"{len(shots) + 1:02d}-{s.get('name', 'shot')}.png")
                     page.screenshot(path=path)
