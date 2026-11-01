@@ -105,6 +105,39 @@ def refuse_reason(step, plan, url):
     return None
 
 
+def resolve_local_storage(plan):
+    """Plan key "local_storage": {key: literal | {"env": NAME} | {"file": path, "json": "a.b"}} -> {key: str}.
+    Lets a plan start already signed in (a session token minted outside the run) without the secret
+    ever being written into the plan file or the report. Raises PlanError naming the missing variable."""
+    out = {}
+    for k, v in (plan.get("local_storage") or {}).items():
+        if isinstance(v, dict) and "env" in v:
+            val = os.environ.get(v["env"])
+            if not val:
+                raise PlanError(f"local_storage[{k!r}]: environment variable {v['env']} is not set")
+            out[k] = val
+        elif isinstance(v, dict) and "file" in v:
+            try:
+                raw = open(os.path.expanduser(v["file"]), encoding="utf-8").read().strip()
+                if v.get("json"):
+                    cur = json.loads(raw)
+                    for part in v["json"].split("."):
+                        cur = cur[part]
+                    raw = cur if isinstance(cur, str) else json.dumps(cur)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                raise PlanError(f"local_storage[{k!r}]: cannot read {v['file']}: {exc}") from exc
+            out[k] = raw
+        else:
+            out[k] = v if isinstance(v, str) else json.dumps(v)
+    return out
+
+
+def local_storage_script(origin, items):
+    """Init script: set the items on every page of `origin` before the app's own code runs."""
+    return ("(() => { try { if (location.origin !== %s) return; const d = %s; "
+            "for (const k in d) localStorage.setItem(k, d[k]); } catch (e) {} })();") % (json.dumps(origin), json.dumps(items))
+
+
 def git_head(cwd=None):
     """The commit under test (None outside a git repo). Recorded at start and end of every scenario:
     if it moved during the run, the result is "mixed" and failures must be re-run on the final tip."""
@@ -210,6 +243,10 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                                   record_video_size={"width": w, "height": h})
         ctx.tracing.start(screenshots=True, snapshots=True)
         ctx.add_init_script(CAPTION_JS)
+        ls_items = resolve_local_storage(plan)
+        if ls_items:
+            pu = urlparse(base)
+            ctx.add_init_script(local_storage_script(f"{pu.scheme}://{pu.netloc}", ls_items))
 
         def guard(route):
             if host_allowed(route.request.url, allow):
