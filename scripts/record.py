@@ -61,12 +61,13 @@ CAPTION_JS = r"""
     bar.textContent = text;
   };
   const re = /[\w.+-]+@[\w-]+\.[\w.]+/g;
+  const phoneRe = /\+\d[\d\s().-]{7,}\d/g;
   const mask = () => {
     if (!document.body) return;
     const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n; (n = w.nextNode());) {
       if (n.parentElement && n.parentElement.id === '__qa_caption') continue;
-      const c = n.nodeValue.replace(re, '[email]'); if (c !== n.nodeValue) n.nodeValue = c;
+      const c = n.nodeValue.replace(re, '[email]').replace(phoneRe, '[phone]'); if (c !== n.nodeValue) n.nodeValue = c;
     }
   };
   const start = () => {
@@ -74,7 +75,7 @@ CAPTION_JS = r"""
     // init scripts can run before <html> exists, so the observer is attached once the DOM is there
     new MutationObserver(mask).observe(document.documentElement, {subtree: true, childList: true, characterData: true});
     const st = document.createElement('style');
-    st.textContent = 'input[type=email],input[name*=mail i],input[id*=mail i]{-webkit-text-security:disc}';
+    st.textContent = 'input[type=email],input[name*=mail i],input[id*=mail i],input[type=tel],input[name*=phone i],input[id*=phone i]{-webkit-text-security:disc}';
     (document.head || document.documentElement).appendChild(st);
   };
   if (window.__qaMask !== false) {
