@@ -282,7 +282,10 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                     shots.append(path)
                 elif do in ("expect_text", "expect_visible", "expect_url"):
                     if do == "expect_text":
-                        page.get_by_text(s["text"]).first.wait_for(state="visible")
+                        # never match ShipShape's own caption overlay (it echoes the step's "say" text, so a
+                        # check could pass on the narration instead of the app); "within" scopes to a selector
+                        root = page.locator(s["within"]) if s.get("within") else page.locator("body *:not(#__qa_caption):not(#__qa_caption *)")
+                        root.get_by_text(s["text"]).first.wait_for(state="visible")
                     elif do == "expect_visible":
                         page.wait_for_selector(s["selector"], state="visible")
                     else:
