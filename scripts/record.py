@@ -276,6 +276,29 @@ def run(plan, out, narrate=False, browser_name="chromium", headed=False, total_t
                     page.press(s.get("selector", "body"), s["key"])
                 elif do == "wait":
                     page.wait_for_timeout(min(int(s.get("ms", 1000)), step_timeout * 1000))
+                elif do == "human_pause":
+                    # A person must act (scan a QR, tap approve, solve a captcha) and then say "go":
+                    # the run waits for a GO file, prints/writes what is needed, then resumes.
+                    gf = s.get("wait_file") or os.path.join(out, "GO.txt")
+                    waiting = gf + ".WAITING"
+                    with open(waiting, "w", encoding="utf-8") as fh:
+                        fh.write(s.get("instructions") or say or "waiting for a human")
+                    print(f"[record] WAITING FOR A HUMAN: {s.get('instructions') or say}. Create {gf} to resume.", flush=True)
+                    caption(f"WAITING FOR A HUMAN: {s.get('instructions') or say}", "")
+                    paused_from = time.time()
+                    deadline = time.time() + int(s.get("timeout_s", 900))
+                    while not os.path.exists(gf) and time.time() < deadline:
+                        page.wait_for_timeout(1000)
+                    try:
+                        os.remove(waiting)
+                    except OSError:
+                        pass
+                    t_start += time.time() - paused_from  # waiting for a person does not eat the run's time budget
+                    if not os.path.exists(gf):
+                        raise TimeoutError(f"no human GO within {s.get('timeout_s', 900)}s")
+                    caption("Human step done, resuming", "PASS")
+                    if s.get("case"):
+                        results.append({"id": s["case"], "title": say or do, "result": "PASS", "evidence": "human gate released"})
                 elif do == "screenshot":
                     path = os.path.join(out, f"{len(shots) + 1:02d}-{s.get('name', 'shot')}.png")
                     page.screenshot(path=path)
